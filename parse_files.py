@@ -10,6 +10,8 @@ Created on Tue May 18 20:08:23 2023
 """
 import numpy as np
 import struct
+import matplotlib.pyplot as plt
+from scipy import interpolate
 
 def get_image_para(par_file):
     """
@@ -54,10 +56,11 @@ def get_image_para(par_file):
                     pass
         post_arc = post_lon * 3600 # to arcsecond
         post_utm = post_arc * 40075017 / 360 / 3600  # earth circumference to ground resolution, meter
-        post_arc2 = "{:.2f}".format(post_arc)
-        post_utm2 = "{:.2f}".format(post_utm)
+        # post_arc2 = "{:.2f}".format(post_arc)
+        # post_utm2 = "{:.2f}".format(post_utm)
         print("-------------------------------------------------------------")
-        print("The InSAR pixel resoluton is {} arc-second, ~{} meters." .format(post_arc2, post_utm2))
+        # print("The InSAR pixel resoluton is {} arc-second, ~{} meters." .format(post_arc2, post_utm2))
+        print("The InSAR pixel resoluton is %f arc-second, ~%f meters." %(post_arc, post_utm))
         print("-------------------------------------------------------------")
 
         return [width, nlines, corner_lat, corner_lon, post_lat, post_lon, post_arc, post_utm]
@@ -69,7 +72,7 @@ def get_image_para(par_file):
 
 
 
-def get_image_data(image_file, parameters, resample_factor = None, swap_bytes = "big-endian"):
+def get_image_data(image_file, parameters, resample_factor = 1, plot_flag = 0, swap_bytes = "big-endian"):
     """
     Read the insar images.
     ----------
@@ -90,56 +93,66 @@ def get_image_data(image_file, parameters, resample_factor = None, swap_bytes = 
     
     # read the binary file firstly
     try:
-        # with open(image_file, 'rb') as file:
-        #     image_arry = np.zeros([range_samples, azimuth_lines])
-        #     # need read in column
-        #     print("-------------------------------------------------------------")
-        #     print("Now we are reading the phase images (binary files)...")
-        #     print("-------------------------------------------------------------")
-        #     for i in range(azimuth_lines):
-        #         for j in range(range_samples):
-        #             # >f, big-endian, 4 bytes float
-        #             chunk = file.read(4)
-        #             image_arry[j][i] = struct.unpack('>f', chunk)[0]
+        with open(image_file, 'rb') as file:
+            image_arry = np.zeros([range_samples, azimuth_lines])
+            # need read in column
+            print("-------------------------------------------------------------")
+            print("Now we are reading the phase images (binary files)...")
+            print("-------------------------------------------------------------")
+            for i in range(azimuth_lines):
+                for j in range(range_samples):
+                    # >f, big-endian, 4 bytes float
+                    chunk = file.read(4)
+                    image_arry[j][i] = struct.unpack('>f', chunk)[0]
                     
          
         # resample the image or not
-        if resample_factor is None:
+        if resample_factor == 1:
             print("-------------------------------------------------------------")
             print("Done readind!")
             print("Here you choose do not to resample the images.")
             print("The InSAR pixel resoluton is %f arc-second, ~%f meters." %(post_arc, post_utm))
             print("-------------------------------------------------------------")
+            
+            if plot_flag != 0:
+                print("Quick preview image is generated ...")
+                plt.imshow(image_arry, cmap = 'jet')
+                                  
+            return image_arry, [range_samples, azimuth_lines, corner_lat, corner_lon, post_lat, \
+                            post_lon, post_arc,post_utm]
+            
         else:
-            range_samples = range_samples // resample_factor
-            azimuth_lines = azimuth_lines // resample_factor
-            post_lat = post_lat * resample_factor
-            post_lon = post_lon * resample_factor
-            post_arc = post_arc * resample_factor
-            post_utm = post_utm * resample_factor
+            new_range_samples = range_samples // resample_factor
+            new_azimuth_lines = azimuth_lines // resample_factor
+            new_post_lat, new_post_lon = post_lat * resample_factor, post_lon * resample_factor
+            new_post_arc, new_post_utm = post_arc * resample_factor, post_utm * resample_factor
+           
             print("-------------------------------------------------------------")
             print("Done readind!")
             print("Here you choose resample the image with a factor of %d." %resample_factor)
             print("The pixel resoluton of resampled InSAR image is %f arc-second, ~%f meters." \
-                  %(post_arc, post_utm))
+                  %(new_post_arc, new_post_utm))
             print("-------------------------------------------------------------")
             
-        #     resampled_arry = np.zeros([range_samples, azimuth_lines])
-        #     for x in range(azimuth_lines):
-        #         for y in range(range_samples):
-        #             window_data = image_arry[x * resample_factor:(x + 1) * resample_factor, y * resample_factor \
-        #                                      :(y + 1) *resample_factor]
-        #             window_data = np.mean(window_data)
-        #             resampled_arry[x, y] = window_data
-        #     image_arry = resampled_arry
+            # create the rows and cols
+            rows, cols = np.arange(0, range_samples, 1), np.arange(0, azimuth_lines, 1)
+            # bicubic interpolation
+            interp_func = interpolate.interp2d(cols, rows, image_arry, kind='cubic')
+
+            new_rows, new_cols = np.arange(0, range_samples, resample_factor), \
+                np.arange(0, azimuth_lines, resample_factor)
+                                           
+            new_image_arry = interp_func(new_cols, new_rows)
             
+            if plot_flag != 0:
+                print("Quick preview image is generated ...")
+                plt.imshow(new_image_arry, cmap = 'jet')
             
-            
-        # return image_arry, [range_samples, azimuth_lines, corner_lat, corner_lon, post_lat, \
-        #                     post_lon, post_arc,post_utm]
-        
+            return new_image_arry, [new_range_samples, new_azimuth_lines, corner_lat, corner_lon, new_post_lat, \
+                                new_post_lon, new_post_arc, new_post_utm]
+              
     
-    except IOError:
+    except IOError: 
         print("Error: cannot open the image file, please check the file path or the parameters!")
     
     
@@ -150,5 +163,5 @@ def get_image_data(image_file, parameters, resample_factor = None, swap_bytes = 
 
 
 
-if __name__ == "__main__":
-    print("Only functions are defined here.")
+#if __name__ == "__main__":
+#    print("Only functions are defined here.")
