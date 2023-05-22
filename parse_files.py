@@ -4,6 +4,7 @@
 Some functions for parsing files:
     (1) .par files, e.g., .dem.par to get the image parameters
     (2) deformation images to get the deformation phase
+    (3) change the phase to LOS direction
     
 Created on Tue May 18 20:08:23 2023
 
@@ -13,6 +14,7 @@ import numpy as np
 import struct
 import matplotlib.pyplot as plt
 from scipy import interpolate
+from scipy.constants import c
 
 def get_image_para(par_file):
     """
@@ -124,7 +126,7 @@ def get_image_data(image_file, parameters, resample_factor = 1, plot_flag = 0, s
                     image_arry[j][i] = struct.unpack('>f', chunk)[0]
             
             image_arry = image_arry.transpose()
-                    
+                
          
         # resample the image or not
         if resample_factor == 1:
@@ -134,22 +136,23 @@ def get_image_data(image_file, parameters, resample_factor = 1, plot_flag = 0, s
             print("The InSAR pixel resoluton is %f arc-second, ~%f meters." %(post_arc, post_utm))
             print("-------------------------------------------------------------")
             
+            
+            # make the 0 vlaues to be nan to better plotting
+            image_arry2 = np.where(image_arry == 0, np.nan, image_arry)    
             if plot_flag != 0:
                 print("Quick preview image is generated ...")
                 lats = np.linspace(corner_lat, corner_lat + (azimuth_lines - 1) * post_lat, azimuth_lines)
-                lons = np.linspace(corner_lon, corner_lon + (range_samples - 1) * post_lon, azimuth_lines)
+                lons = np.linspace(corner_lon, corner_lon + (range_samples - 1) * post_lon, range_samples)
                 
-                # make the 0 vlaues to be nan to better plotting
-                image_arry2 = np.where(image_arry == 0, np.nan, image_arry)
                 plt.imshow(image_arry2, cmap = 'jet', vmin = np.nanmin(image_arry2), vmax = np.nanmax(image_arry2), \
                            origin = 'upper', extent= [np.min(lons), np.max(lons), np.min(lats), np.max(lats)], alpha = 1.0)
-                plt.colorbar(label = 'Deformation (phase)')
+                plt.colorbar(label = 'Phase (radians)')
                 plt.xlabel('Longitude')
                 plt.ylabel('Latitude')
                 plt.show()    
                 
                                   
-            return image_arry2, [range_samples, azimuth_lines, corner_lat, corner_lon, post_lat, \
+            return image_arry2, lats, lons, [range_samples, azimuth_lines, corner_lat, corner_lon, post_lat, \
                             post_lon, post_arc,post_utm]
             
         else:
@@ -165,36 +168,35 @@ def get_image_data(image_file, parameters, resample_factor = 1, plot_flag = 0, s
                   %(new_post_arc, new_post_utm))
             print("-------------------------------------------------------------")
             
+            
             # create the rows and cols
-            #rows, cols = np.arange(0, range_samples, 1), np.arange(0, azimuth_lines, 1)
             rows, cols = np.arange(0, azimuth_lines, 1), np.arange(0, range_samples, 1)
-            # bicubic interpolation
-            #interp_func = interpolate.interp2d(cols, rows, image_arry, kind='cubic')
-            interp_func = interpolate.interp2d(cols, rows, image_arry, kind='cubic')
-            #new_rows, new_cols = np.arange(0, range_samples, resample_factor), \
-            #    np.arange(0, azimuth_lines, resample_factor)
+            # linear interpolation
+            interp_func = interpolate.interp2d(cols, rows, image_arry, kind='linear')
+        
             new_rows, new_cols = np.arange(0, azimuth_lines, resample_factor), \
                 np.arange(0, range_samples, resample_factor)                               
-            #new_image_arry = interp_func(new_cols, new_rows)
+            
             new_image_arry = interp_func(new_cols, new_rows)
             
             if plot_flag != 0:
                 print("Quick preview image (phase) is generated ...")
                 
                 lats = np.linspace(corner_lat, corner_lat + (new_azimuth_lines - 1) * new_post_lat, new_azimuth_lines)
-                lons = np.linspace(corner_lon, corner_lon + (new_range_samples - 1) * new_post_lon, new_azimuth_lines)
+                lons = np.linspace(corner_lon, corner_lon + (new_range_samples - 1) * new_post_lon, new_range_samples)
                 
                 # make the 0 vlaues to be nan to better plotting
-                new_image_arry2 = np.where(image_arry == 0, np.nan, image_arry)
+                new_image_arry2 = np.where(new_image_arry == 0, np.nan, new_image_arry)
+                #new_image_arry2 = new_image_arry
                 plt.imshow(new_image_arry2, cmap = 'jet', vmin = np.nanmin(new_image_arry2), vmax = np.nanmax(new_image_arry2), \
                            origin = 'upper', extent= [np.min(lons), np.max(lons), np.min(lats), np.max(lats)], alpha = 1.0)
-                plt.colorbar(label = 'Deformation (phase)')
+                plt.colorbar(label = 'Phase (radians)')
                 plt.xlabel('Longitude')
                 plt.ylabel('Latitude')
                 plt.show()    
                 
             
-            return new_image_arry2, [new_range_samples, new_azimuth_lines, corner_lat, corner_lon, new_post_lat, \
+            return new_image_arry2, lats, lons, [new_range_samples, new_azimuth_lines, corner_lat, corner_lon, new_post_lat, \
                                 new_post_lon, new_post_arc, new_post_utm]
               
     
@@ -231,7 +233,16 @@ def phase2los(phase_data, parameters, satellite = "sentinel", plot_flag = 0):
     post_lon = parameters[5]
     
     if satellite == "sentinel" or satellite == "sentinel-1" or  satellite == "s1":
-        wavelength = 0.0555041577 # m
+        radar_freq = 5.40500045433e9 # Hz
+        wavelength = c / radar_freq # m
+        # wavelength = 0.0555041577 # m
+    elif satellite == "ALOS" or satellite == "alos":
+        radar_freq = 1.27e9 # Hz
+        pass
+    elif satellite == "ALOS-2/U":
+        radar_freq = 1.2575e9
+    elif satellite == "ALOS-2/{F,W}":
+        radar_freq = 1.2365e9
         
     los = - (phase_data / 2 / np.pi * wavelength / 2)
     

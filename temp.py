@@ -20,14 +20,15 @@ import parse_files
 from scipy import interpolate
 import numpy as np
 import matplotlib.pyplot as plt
+import image_preprocessing
 
 # # -----------------------------------------------------------------------------------
 # # the image is unwrapped phase
-# file_name = "/misc/zs7/Zelong/EQ_DInSAR/EQ_20171112_T72A/UNW/mcf/20171111_20171117.unw_utm"
-# dem_par = "/misc/zs7/Zelong/EQ_DInSAR/EQ_20171112_T72A/SIM/20171111_20171117.utm.dem.par"
+file_name = "/misc/zs7/Zelong/EQ_DInSAR/EQ_20171112_T72A/UNW/mcf/20171111_20171117.unw_utm"
+dem_par = "/misc/zs7/Zelong/EQ_DInSAR/EQ_20171112_T72A/SIM/20171111_20171117.utm.dem.par"
 
-file_name = "/misc/zs7/Zelong/EQ_DInSAR/EQ_20171112_T79D/UNW/mcf/20171112_20171124.unw_utm"
-dem_par = "/misc/zs7/Zelong/EQ_DInSAR/EQ_20171112_T79D/SIM/20171112_20171124.utm.dem.par"
+# file_name = "/misc/zs7/Zelong/EQ_DInSAR/EQ_20171112_T79D/UNW/mcf/20171112_20171124.unw_utm"
+# dem_par = "/misc/zs7/Zelong/EQ_DInSAR/EQ_20171112_T79D/SIM/20171112_20171124.utm.dem.par"
 
 
 # file_name = "20171111_20171117.unw_utm"
@@ -44,8 +45,10 @@ dem_par = "/misc/zs7/Zelong/EQ_DInSAR/EQ_20171112_T79D/SIM/20171112_20171124.utm
 #width, nlines, corner_lat, corner_lon, post_lat, post_lon = parse_files.get_image_para(dem_par)
 
 paras = parse_files.get_image_para(dem_par)
-data, para2 = parse_files.get_image_data(file_name, paras, 1, 1)
+data, lats, lons, para2 = parse_files.get_image_data(file_name, paras, 3, 1)
 los = parse_files.phase2los(data, para2, 'sentinel', 1)
+
+utm_easting, utm_northing, utm_zone, utm_zone_letter = image_preprocessing.deg2utm(lats, lons)
 
 #data, para2 = parse_files.get_image_data(file_path + file_name, paras)
 
