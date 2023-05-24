@@ -72,11 +72,62 @@ def get_image_para(par_file):
         print("Error: cannot open the parameter file, please check the file path!")
 
 
-
-
-
-def get_image_data(image_file, parameters, resample_factor = 1, plot_flag = 0, swap_bytes = "big-endian"):
+def get_image_data(image_file, para_file, swap_bytes = "big-endian"):
     """
+    Read the InSAR images (and DEM files if needed).
+
+    Parameters
+    ----------
+    image_file : big-endian files of insar images or dem from GAMMA
+
+    para_file : the image parameters from get_image_para
+        
+    swap_bytes : The default is "big-endian" (only big-endian is supported now) .
+
+    Returns
+    -------
+    image_arry : array of imges for the follwing processing.
+
+    """
+    
+    parameters = get_image_para(para_file)
+    
+    range_samples = parameters[0] # width
+    azimuth_lines = parameters[1] # nlines
+    # corner_lat = parameters[2] 
+    # corner_lon = parameters[3]
+    # post_lat = parameters[4]
+    # post_lon = parameters[5]
+    # post_arc = parameters[6]
+    # post_utm = parameters[7]
+    
+    try:
+        with open(image_file, 'rb') as file:
+            image_arry = np.zeros([range_samples, azimuth_lines])
+            # need read in column
+            print("-------------------------------------------------------------")
+            print("Now we are reading the phase images (binary files)...")
+            print(f"Total {azimuth_lines}:")
+
+            for i in range(azimuth_lines):
+                print(f"{i} ", end = '\r')
+                for j in range(range_samples):
+                    # >f, big-endian, 4 bytes float
+                    chunk = file.read(4)
+                    image_arry[j][i] = struct.unpack('>f', chunk)[0]
+            
+        image_arry = image_arry.transpose()
+        
+        return image_arry, parameters
+        
+    except IOError: 
+       print("Error: cannot open the image file, please check the file path or the parameters!")        
+#--------------------------------------------------------------------------------------------
+
+
+def get_image_data2(image_file, parameters, resample_factor = 1, plot_flag = 0, swap_bytes = "big-endian"):
+    """
+
     Read the insar images.
 
     Parameters
@@ -99,6 +150,7 @@ def get_image_data(image_file, parameters, resample_factor = 1, plot_flag = 0, s
     list
         ralated info of the image.
 
+ 
     """
   
     range_samples = parameters[0] # width
@@ -120,13 +172,14 @@ def get_image_data(image_file, parameters, resample_factor = 1, plot_flag = 0, s
             print("Now we are reading the phase images (binary files)...")
 
             for i in range(azimuth_lines):
+                print(f"{i} of {azimuth_lines} ...")
                 for j in range(range_samples):
                     # >f, big-endian, 4 bytes float
                     chunk = file.read(4)
                     image_arry[j][i] = struct.unpack('>f', chunk)[0]
             
             image_arry = image_arry.transpose()
-                
+            
          
         # resample the image or not
         if resample_factor == 1:
@@ -138,11 +191,11 @@ def get_image_data(image_file, parameters, resample_factor = 1, plot_flag = 0, s
             
             
             # make the 0 vlaues to be nan to better plotting
-            image_arry2 = np.where(image_arry == 0, np.nan, image_arry)    
+            image_arry2 = np.where(image_arry == 0, np.nan, image_arry)
             if plot_flag != 0:
                 print("Quick preview image is generated ...")
                 lats = np.linspace(corner_lat, corner_lat + (azimuth_lines - 1) * post_lat, azimuth_lines)
-                lons = np.linspace(corner_lon, corner_lon + (range_samples - 1) * post_lon, range_samples)
+                lons = np.linspace(corner_lon, corner_lon + (range_samples - 1 ) * post_lon, range_samples)
                 
                 plt.imshow(image_arry2, cmap = 'jet', vmin = np.nanmin(image_arry2), vmax = np.nanmax(image_arry2), \
                            origin = 'upper', extent= [np.min(lons), np.max(lons), np.min(lats), np.max(lats)], alpha = 1.0)
@@ -156,8 +209,8 @@ def get_image_data(image_file, parameters, resample_factor = 1, plot_flag = 0, s
                             post_lon, post_arc,post_utm]
             
         else:
-            new_range_samples = range_samples // resample_factor
-            new_azimuth_lines = azimuth_lines // resample_factor
+            # new_range_samples = range_samples // resample_factor
+            # new_azimuth_lines = azimuth_lines // resample_factor
             new_post_lat, new_post_lon = post_lat * resample_factor, post_lon * resample_factor
             new_post_arc, new_post_utm = post_arc * resample_factor, post_utm * resample_factor
            
@@ -179,11 +232,14 @@ def get_image_data(image_file, parameters, resample_factor = 1, plot_flag = 0, s
             
             new_image_arry = interp_func(new_cols, new_rows)
             
+            new_azimuth_lines = new_image_arry.shape[0]
+            new_range_samples = new_image_arry.shape[1]
+            
             if plot_flag != 0:
                 print("Quick preview image (phase) is generated ...")
                 
-                lats = np.linspace(corner_lat, corner_lat + (new_azimuth_lines - 1) * new_post_lat, new_azimuth_lines)
-                lons = np.linspace(corner_lon, corner_lon + (new_range_samples - 1) * new_post_lon, new_range_samples)
+                lats = np.linspace(corner_lat, corner_lat + (new_azimuth_lines - 1 ) * new_post_lat, new_azimuth_lines)
+                lons = np.linspace(corner_lon, corner_lon + (new_range_samples - 1 ) * new_post_lon, new_range_samples)
                 
                 # make the 0 vlaues to be nan to better plotting
                 new_image_arry2 = np.where(new_image_arry == 0, np.nan, new_image_arry)
@@ -225,6 +281,7 @@ def phase2los(phase_data, parameters, satellite = "sentinel", plot_flag = 0):
     InSAR LOS deformation feiled.
 
     """
+
     range_samples = parameters[0] # width
     azimuth_lines = parameters[1] # nlines
     corner_lat = parameters[2] 
@@ -260,8 +317,7 @@ def phase2los(phase_data, parameters, satellite = "sentinel", plot_flag = 0):
         plt.show()
         
     return los
-            
-
+    
 
 
 if __name__ == "__main__":

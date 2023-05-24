@@ -26,6 +26,7 @@ import image_preprocessing
 # # the image is unwrapped phase
 file_name = "/misc/zs7/Zelong/EQ_DInSAR/EQ_20171112_T72A/UNW/mcf/20171111_20171117.unw_utm"
 dem_par = "/misc/zs7/Zelong/EQ_DInSAR/EQ_20171112_T72A/SIM/20171111_20171117.utm.dem.par"
+dem_name = "/misc/zs7/Zelong/EQ_DInSAR/EQ_20171112_T72A/SIM/20171111_20171117.utm.dem"
 
 # file_name = "/misc/zs7/Zelong/EQ_DInSAR/EQ_20171112_T79D/UNW/mcf/20171112_20171124.unw_utm"
 # dem_par = "/misc/zs7/Zelong/EQ_DInSAR/EQ_20171112_T79D/SIM/20171112_20171124.utm.dem.par"
@@ -42,36 +43,66 @@ dem_par = "/misc/zs7/Zelong/EQ_DInSAR/EQ_20171112_T72A/SIM/20171111_20171117.utm
 
 
 
-#width, nlines, corner_lat, corner_lon, post_lat, post_lon = parse_files.get_image_para(dem_par)
 
-paras = parse_files.get_image_para(dem_par)
-data, lats, lons, para2 = parse_files.get_image_data(file_name, paras, 3, 1)
-los = parse_files.phase2los(data, para2, 'sentinel', 1)
 
-utm_easting, utm_northing, utm_zone, utm_zone_letter = image_preprocessing.deg2utm(lats, lons)
+# get the data and parameters firstly
+#paras = parse_files.get_image_para(dem_par)
+unw, paras = parse_files.get_image_data(file_name, dem_par)
+dem, _ = parse_files.get_image_data(dem_name, dem_par)
 
-#data, para2 = parse_files.get_image_data(file_path + file_name, paras)
+# deramp and remove dem-raleted error if needed
 
-#-------------------------------------------------------------------------------------
 
-# range_samples = para2[0] # width
-# azimuth_lines = para2[1] # nlines
-# corner_lat = para2[2] 
-# corner_lon = para2[3]
-# post_lat = para2[4]
-# post_lon = para2[5]
-# post_arc = para2[6]
-# post_utm = para2[7]
-    
-# lats = np.linspace(corner_lat, corner_lat + (azimuth_lines - 1) * post_lat, azimuth_lines)
-# lons = np.linspace(corner_lon, corner_lon + (range_samples - 1) * post_lon, range_samples)
+# resampling and los2phase
 
-# # make the 0 vlaues to be nan to better plotting
-# data = np.where(data == 0, np.nan, data) 
 
-# plt.imshow(data, cmap = 'jet', vmin = np.nanmin(data), vmax = np.nanmax(data), origin = 'upper', \
-#             extent= [np.min(lons), np.max(lons), np.min(lats), np.max(lats)], alpha = 1.0)
-# plt.colorbar(label = 'Deformation (phase)')
-# plt.xlabel('Longitude')
-# plt.ylabel('Latitude')
-# plt.show()    
+
+
+
+
+
+
+
+# #-------------------------------------------------------------------------------------
+# unw = los
+# x, y = np.meshgrid(lons, lats)
+
+# unw_mask = unw
+
+# # mask = [[45.2, 47],
+# #         [34.2, 35.2]] # min_lon, max_lon, min_lat, max_lat
+
+# # --------------------
+# mask = [[250, 1500],
+#         [1200, 2500]]
+# # --------------------
+
+# unw_mask[mask[0][0]:mask[0][1], mask[1][0]:mask[1][1]] = np.nan
+
+# xx, yy = np.meshgrid(np.arange(0, unw.shape[1]), np.arange(0, unw.shape[0]))
+
+# plt.imshow(unw_mask, cmap = 'jet') #, vmin = np.nanmin(los), vmax = np.nanmax(los), \
+#                     #origin = 'upper', extent= [np.min(lons), np.max(lons), np.min(lats), np.max(lats)], alpha = 1.0)
+# plt.colorbar(label = 'Los Deformation (m)')
+# plt.xlabel('X')
+# plt.ylabel('Y')
+# plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

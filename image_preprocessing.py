@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """
     (1) deg2utm and utm2deg
+    (2) deramp and remove dem-related errors
     
 Created on Sat May 20 20:29:30 2023
 
@@ -24,8 +25,19 @@ def deg2utm(lats, lons):
     utm_zone = utm_zone.reshape(utm_zone.shape)
     return utm_easting, utm_northing, utm_zone
 
-
+# -----------------------------------------------------------------------------
+# need to futher modification
 def utm2deg(utm_easting, utm_northing, utm_zone, utm_zone_letter):
     lats, lons = utm.to_latlon(utm_easting, utm_northing, utm_zone, utm_zone_letter)
     return lats, lons
+    pass 
+# -----------------------------------------------------------------------------
+
+
+def deramp_dem(unw, mask, dem, deramp_method):
+    pass
+
+
+
+
 
