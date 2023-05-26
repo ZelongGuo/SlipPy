@@ -14,7 +14,7 @@ import numpy as np
 import struct
 import matplotlib.pyplot as plt
 from scipy import interpolate
-from scipy.constants import c
+
 
 #--------------------------------------------------------------------------------------------
 def get_image_para(para_file):
@@ -133,7 +133,7 @@ def plot_image_geo(data, parameters, data_flag = "insar_phase"):
         
     parameters : parameter from get_image_para
         
-    data_flag : insar_phase or insar_los (the unit should be cm)
+    data_flag : insar_phase or insar_los (the unit should be m)
     The default is "insar_phase".
 
     Returns
@@ -166,7 +166,7 @@ def plot_image_geo(data, parameters, data_flag = "insar_phase"):
     if data_flag == "insar_phase":
         plt.colorbar(label = 'Phase (radians)')
     elif data_flag == "insar_los":
-        plt.colorbar(label = 'LOS (cm)')
+        plt.colorbar(label = 'LOS (m)')
    
     plt.xlabel('Longitude')
     plt.ylabel('Latitude')
@@ -230,7 +230,7 @@ def plot_image(data, parameters, data_flag = "insar_phase"):
         
     parameters : parameter from get_image_para
         
-    data_flag : insar_phase, insar_los (the unit should be cm) or dem
+    data_flag : insar_phase, insar_los (the unit should be m) or dem
     The default is "insar_phase".
 
     Returns
@@ -238,8 +238,6 @@ def plot_image(data, parameters, data_flag = "insar_phase"):
     None.
 
     """
-    
-      
     range_samples = parameters[0] # width
     azimuth_lines = parameters[1] # nlines
     # corner_lat = parameters[2] 
@@ -416,62 +414,6 @@ def get_image_data2(image_file, parameters, resample_factor = 1, plot_flag = 0, 
     
       
 
-def phase2los(phase_data, parameters, satellite = "sentinel", plot_flag = 0):
-    """
-    after get_image data to get the los deformation
-
-    Parameters
-    ----------
-    phase_data : 
-        the phase data from get_image_data.
-    parameters : 
-        related info from get_image_data.
-    satellite : TYPE
-        The default is sentinel
-        satellite type: sentinel, alos ...
-
-    Returns 
-    -------
-    InSAR LOS deformation feiled.
-
-    """
-
-    range_samples = parameters[0] # width
-    azimuth_lines = parameters[1] # nlines
-    corner_lat = parameters[2] 
-    corner_lon = parameters[3]
-    post_lat = parameters[4]
-    post_lon = parameters[5]
-    
-    if satellite == "sentinel" or satellite == "sentinel-1" or  satellite == "s1":
-        radar_freq = 5.40500045433e9 # Hz
-        wavelength = c / radar_freq # m
-        # wavelength = 0.0555041577 # m
-    elif satellite == "ALOS" or satellite == "alos":
-        radar_freq = 1.27e9 # Hz
-        pass
-    elif satellite == "ALOS-2/U":
-        radar_freq = 1.2575e9
-    elif satellite == "ALOS-2/{F,W}":
-        radar_freq = 1.2365e9
-        
-    los = - (phase_data / 2 / np.pi * wavelength / 2)
-    
-    if plot_flag != 0:
-        print("Quick preview image (LOS) is generated ...")
-                
-        lats = np.linspace(corner_lat, corner_lat + (azimuth_lines - 1) * post_lat, azimuth_lines)
-        lons = np.linspace(corner_lon, corner_lon + (range_samples - 1) * post_lon, azimuth_lines)
-                
-        plt.imshow(los, cmap = 'jet', vmin = np.nanmin(los), vmax = np.nanmax(los), \
-                   origin = 'upper', extent= [np.min(lons), np.max(lons), np.min(lats), np.max(lats)], alpha = 1.0)
-        plt.colorbar(label = 'Los Deformation (m)')
-        plt.xlabel('Longitude')
-        plt.ylabel('Latitude')
-        plt.show()
-        
-    return los
-    
 
 
 if __name__ == "__main__":
