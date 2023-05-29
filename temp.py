@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-This script is used for reading the InSAR iamges.
+This script is used for reading the InSAR images.
 Reading the images output by unwrapping (like mcf) of GAMMA:
     1. big endian
     2. phase data
@@ -21,7 +21,7 @@ from scipy import interpolate
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-from copy import copy 
+from copy import copy
 import image_preprocessing
 
 # # -----------------------------------------------------------------------------------
@@ -68,15 +68,15 @@ deramp_method = 3
 los = image_preprocessing.deramp_dem(unw, paras, dem, mask, 4, 1, "sentinel")
 
 
-# if no need, then phase to los: pgase2los
+# if no need, then phase to los: phase2los
 # phase to LOS
 unw_los = image_preprocessing.phase2los(unw, paras, 'sentinel', 1) # unit m
 
 
-
-# resampling
-
-
+# resampling if needed
+resample_los, resample_paras = image_preprocessing.resample_image(los, paras, 3, 1, "insar_los")
+########### still have problem with resample_image when the facor is 3 ....
+parse_files.plot_image_geo(resample_los, resample_paras, 'insar_los')
 
 
 

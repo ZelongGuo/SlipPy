@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Some functions for parsing files:
-    (1) .par files, e.g., .dem.par to get the image parameters
-    (2) deformation images to get the deformation phase
-    (3) change the phase to LOS direction
+Some functions for parsing files and visualization:
+    get_image_para (.par files, e.g., .dem.par to get the image parameters from GAMMA)
+    get image data (deformation images to get the deformation phase from GAMMA)
+    plot_image_geo
+    plot_dem_geo
+    plot_image
     
 Created on Tue May 18 20:08:23 2023
 
@@ -13,7 +15,7 @@ Created on Tue May 18 20:08:23 2023
 import numpy as np
 import struct
 import matplotlib.pyplot as plt
-from scipy import interpolate
+
 
 
 #--------------------------------------------------------------------------------------------
@@ -75,7 +77,7 @@ def get_image_para(para_file):
 #--------------------------------------------------------------------------------------------
 def get_image_data(image_file, para_file, swap_bytes = "big-endian"):
     """
-    Read the InSAR images (and DEM files if needed).
+    Read the InSAR images (and DEM files if needed) From GAMMA.
 
     Parameters
     ----------
@@ -123,13 +125,13 @@ def get_image_data(image_file, para_file, swap_bytes = "big-endian"):
        print("Error: cannot open the image file, please check the file path or the parameters!")        
 
 #--------------------------------------------------------------------------------------------
-def plot_image_geo(data, parameters, data_flag = "insar_phase"):
+def plot_image_geo(image_data, parameters, data_flag = "insar_phase"):
     """
     Plot geocoded InSAR images.
 
     Parameters
     ----------
-    data : Image matrix reading from get_image_data.
+    image_data : Image matrix (phase or los) reading from get_image_data.
         
     parameters : parameter from get_image_para
         
@@ -159,7 +161,7 @@ def plot_image_geo(data, parameters, data_flag = "insar_phase"):
     lons = np.linspace(corner_lon, corner_lon + (range_samples - 1 ) * post_lon, range_samples)
     
     # make the 0 vlaues to be nan to better plotting
-    data2 = np.where(data == 0, np.nan, data)
+    data2 = np.where(image_data == 0, np.nan, image_data)
     #new_image_arry2 = new_image_arry
     plt.imshow(data2, cmap = 'jet', vmin = np.nanmin(data2), vmax = np.nanmax(data2), \
                origin = 'upper', extent= [np.min(lons), np.max(lons), np.min(lats), np.max(lats)], alpha = 1.0)
@@ -172,13 +174,13 @@ def plot_image_geo(data, parameters, data_flag = "insar_phase"):
     plt.ylabel('Latitude')
     plt.show()    
     
-def plot_dem_geo(image, dem, parameters):
+def plot_dem_geo(image_data, dem, parameters):
     """
     Plot geocoded DEM.
 
     Parameters
     ----------
-    image : Image matrix reading from get_image_data.
+    image_data : Image matrix reading from get_image_data.
     
     dem: dem matrix reading from get_image_data.
         
@@ -207,7 +209,7 @@ def plot_dem_geo(image, dem, parameters):
     lons = np.linspace(corner_lon, corner_lon + (range_samples - 1 ) * post_lon, range_samples)
     
     # make the 0 vlaues to be nan to better plotting
-    dem2 = np.where(image == 0, np.nan, dem)
+    dem2 = np.where(image_data == 0, np.nan, dem)
     #new_image_arry2 = new_image_arry
     plt.imshow(dem2, cmap = 'jet', vmin = np.nanmin(dem2), vmax = np.nanmax(dem2), \
                origin = 'upper', extent= [np.min(lons), np.max(lons), np.min(lats), np.max(lats)], alpha = 1.0)
@@ -222,7 +224,7 @@ def plot_dem_geo(image, dem, parameters):
 
 def plot_image(data, parameters, data_flag = "insar_phase"):
     """
-    Plot InSAR images or DEM (no geocoding).
+    Plot InSAR images (phase or los) or DEM (no geocoding).
 
     Parameters
     ----------
@@ -262,7 +264,7 @@ def plot_image(data, parameters, data_flag = "insar_phase"):
     if data_flag == "insar_phase":
         plt.colorbar(label = 'Phase (radians)')
     elif data_flag == "insar_los":
-        plt.colorbar(label = 'LOS (cm)')
+        plt.colorbar(label = 'LOS (m)')
     elif data_flag == "dem":
         plt.colorbar(label = 'Elevation (m)')
     plt.xlabel('X (pixel number)')
@@ -272,147 +274,7 @@ def plot_image(data, parameters, data_flag = "insar_phase"):
   
 
 #--------------------------------------------------------------------------------------------
-#--------------------------------------------------------------------------------------------
-#--------------------------------------------------------------------------------------------
-#--------------------------------------------------------------------------------------------
 
-
-def get_image_data2(image_file, parameters, resample_factor = 1, plot_flag = 0, swap_bytes = "big-endian"):
-    """
-
-    Read the insar images.
-
-    Parameters
-    ----------
-    image_file : 
-        the image data from GAMMA, note it is binary file
-    parameters :
-        the image parameters from get_image_para
-    resample_factor : optional
-        resampling factor, >1 is downsampling, <1 is upsampling. The default is 1.
-    plot_flag : TYPE, optional
-        plot (1) or not (0). The default is 0.
-    swap_bytes : optional
-        the unpack method of the input data. The default is "big-endian" of GAMMA interferograms.
-
-    Returns
-    -------
-    TYPE
-        InSAR image data (phase).
-    list
-        ralated info of the image.
-
- 
-    """
-  
-    range_samples = parameters[0] # width
-    azimuth_lines = parameters[1] # nlines
-    corner_lat = parameters[2] 
-    corner_lon = parameters[3]
-    post_lat = parameters[4]
-    post_lon = parameters[5]
-    post_arc = parameters[6]
-    post_utm = parameters[7]
-    
-    
-    # read the binary file firstly
-    try:
-        with open(image_file, 'rb') as file:
-            image_arry = np.zeros([range_samples, azimuth_lines])
-            # need read in column
-            print("-------------------------------------------------------------")
-            print("Now we are reading the phase images (binary files)...")
-
-            for i in range(azimuth_lines):
-                print(f"{i} of {azimuth_lines} ...")
-                for j in range(range_samples):
-                    # >f, big-endian, 4 bytes float
-                    chunk = file.read(4)
-                    image_arry[j][i] = struct.unpack('>f', chunk)[0]
-            
-            image_arry = image_arry.transpose()
-            
-         
-        # resample the image or not
-        if resample_factor == 1:
-            
-            print("Done readind!")
-            print("Here you choose do not to resample the images.")
-            print("The InSAR pixel resoluton is %f arc-second, ~%f meters." %(post_arc, post_utm))
-            print("-------------------------------------------------------------")
-            
-            
-            # make the 0 vlaues to be nan to better plotting
-            image_arry2 = np.where(image_arry == 0, np.nan, image_arry)
-            if plot_flag != 0:
-                print("Quick preview image is generated ...")
-                lats = np.linspace(corner_lat, corner_lat + (azimuth_lines - 1) * post_lat, azimuth_lines)
-                lons = np.linspace(corner_lon, corner_lon + (range_samples - 1 ) * post_lon, range_samples)
-                
-                plt.imshow(image_arry2, cmap = 'jet', vmin = np.nanmin(image_arry2), vmax = np.nanmax(image_arry2), \
-                           origin = 'upper', extent= [np.min(lons), np.max(lons), np.min(lats), np.max(lats)], alpha = 1.0)
-                plt.colorbar(label = 'Phase (radians)')
-                plt.xlabel('Longitude')
-                plt.ylabel('Latitude')
-                plt.show()    
-                
-                                  
-            return image_arry2, lats, lons, [range_samples, azimuth_lines, corner_lat, corner_lon, post_lat, \
-                            post_lon, post_arc,post_utm]
-            
-        else:
-            # new_range_samples = range_samples // resample_factor
-            # new_azimuth_lines = azimuth_lines // resample_factor
-            new_post_lat, new_post_lon = post_lat * resample_factor, post_lon * resample_factor
-            new_post_arc, new_post_utm = post_arc * resample_factor, post_utm * resample_factor
-           
-            
-            print("Done readind!")
-            print("Here you choose resample the image with a factor of %d." %resample_factor)
-            print("The pixel resoluton of resampled InSAR image is %f arc-second, ~%f meters." \
-                  %(new_post_arc, new_post_utm))
-            print("-------------------------------------------------------------")
-            
-            
-            # create the rows and cols
-            rows, cols = np.arange(0, azimuth_lines, 1), np.arange(0, range_samples, 1)
-            # linear interpolation
-            interp_func = interpolate.interp2d(cols, rows, image_arry, kind='linear')
-        
-            new_rows, new_cols = np.arange(0, azimuth_lines, resample_factor), \
-                np.arange(0, range_samples, resample_factor)                               
-            
-            new_image_arry = interp_func(new_cols, new_rows)
-            
-            new_azimuth_lines = new_image_arry.shape[0]
-            new_range_samples = new_image_arry.shape[1]
-            
-            if plot_flag != 0:
-                print("Quick preview image (phase) is generated ...")
-                
-                lats = np.linspace(corner_lat, corner_lat + (new_azimuth_lines - 1 ) * new_post_lat, new_azimuth_lines)
-                lons = np.linspace(corner_lon, corner_lon + (new_range_samples - 1 ) * new_post_lon, new_range_samples)
-                
-                # make the 0 vlaues to be nan to better plotting
-                new_image_arry2 = np.where(new_image_arry == 0, np.nan, new_image_arry)
-                #new_image_arry2 = new_image_arry
-                plt.imshow(new_image_arry2, cmap = 'jet', vmin = np.nanmin(new_image_arry2), vmax = np.nanmax(new_image_arry2), \
-                           origin = 'upper', extent= [np.min(lons), np.max(lons), np.min(lats), np.max(lats)], alpha = 1.0)
-                plt.colorbar(label = 'Phase (radians)')
-                plt.xlabel('Longitude')
-                plt.ylabel('Latitude')
-                plt.show()    
-                
-            
-            return new_image_arry2, lats, lons, [new_range_samples, new_azimuth_lines, corner_lat, corner_lon, new_post_lat, \
-                                new_post_lon, new_post_arc, new_post_utm]
-              
-    
-    except IOError: 
-        print("Error: cannot open the image file, please check the file path or the parameters!")
-    
-    
-      
 
 
 

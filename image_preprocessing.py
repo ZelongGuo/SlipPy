@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-    (1) deg2utm and utm2deg
-    (2) deramp and remove dem-related errors
+This script defines some functions for pre-processing of InSAR images, including:
+    phase2los
+    deramp_dem (deramp and remove dem-related errors)
+    resample_image
+    
+    deg2utm and utm2deg
+    
     
 Created on Sat May 20 20:29:30 2023
 
@@ -14,7 +19,8 @@ import numpy as np
 from scipy.constants import c
 import matplotlib.pyplot as plt
 from copy import copy
-
+import parse_files
+from scipy import interpolate
 
 def phase2los(phase_data, parameters, satellite = "sentinel", plot_flag = 0):
     """
@@ -63,9 +69,9 @@ def phase2los(phase_data, parameters, satellite = "sentinel", plot_flag = 0):
         lats = np.linspace(corner_lat, corner_lat + (azimuth_lines - 1) * post_lat, azimuth_lines)
         lons = np.linspace(corner_lon, corner_lon + (range_samples - 1) * post_lon, azimuth_lines)
                 
-        plt.imshow(los, cmap = 'jet', vmin = np.nanmin(los), vmax = np.nanmax(los), \
-                   origin = 'upper', extent= [np.min(lons), np.max(lons), np.min(lats), np.max(lats)], alpha = 1.0)
-        plt.colorbar(label = 'Los Deformation (m)')
+        plt.imshow(los, cmap='jet', vmin=np.nanmin(los), vmax=np.nanmax(los), origin='upper', extent=[np.min(lons),
+                                                            np.max(lons), np.min(lats), np.max(lats)], alpha=1.0)
+        plt.colorbar(label='Los Deformation (m)')
         plt.xlabel('Longitude')
         plt.ylabel('Latitude')
         plt.show()
@@ -76,6 +82,7 @@ def phase2los(phase_data, parameters, satellite = "sentinel", plot_flag = 0):
 def deramp_dem(phase_data, parameters, dem_data, mask, sig_factor = 4, deramp_method = 1, satellite = "sentinel"):
     """
     Deramping and remove dem-related errors from phase data.
+    Return LOS image.
 
     Parameters
     ----------
@@ -216,9 +223,135 @@ def deramp_dem(phase_data, parameters, dem_data, mask, sig_factor = 4, deramp_me
 
     return unw_flat    
 
+#--------------------------------------------------------------------------------------------
+
+def resample_image(image_data, parameters, resample_factor = 1, plot_flag = 0, data_flag = "insar_phase"):
+    """
+    Resampling the insar images (phase or los).
+
+    Parameters
+    ----------
+    image_data : phase or LOS insar images.
+        
+    parameters : the image parameters from get_image_para
+       
+    resample_factor : optional
+        resampling factor, >1 is downsampling, <1 is upsampling. The default is 1.
+    
+    plot_flag : TYPE, optional
+        plot (1) or not (0). The default is 0.
+        
+    data_flag: "insar_phase" or "insar_los".
+
+    Returns
+    -------
+    TYPE
+        InSAR image data.
+    list
+        ralated info of the image.
+
+ 
+    """
+  
+    range_samples = parameters[0] # width
+    azimuth_lines = parameters[1] # nlines
+    corner_lat = parameters[2] 
+    corner_lon = parameters[3]
+    post_lat = parameters[4]
+    post_lon = parameters[5]
+    post_arc = parameters[6]
+    post_utm = parameters[7]
+    
+         
+    # resample the image or not, if not, do nothing
+    if resample_factor == 1:
+        print("-------------------------------------------------------------")    
+        print("Here you choose do not to resample the images.")
+        print("The InSAR pixel resoluton is %f arc-second, ~%f meters." %(post_arc, post_utm))
+        print("-------------------------------------------------------------")
+            
+            
+        # make the 0 vlaues to be nan 
+        # image_data2 = np.where(image_data == 0, np.nan, image_data)
+        if plot_flag != 0:
+            print("Quick preview image is generated ...")
+            parse_files.plot_image(image_data, parameters, data_flag)               
+                                  
+        return image_data, [range_samples, azimuth_lines, corner_lat, corner_lon, post_lat, \
+                            post_lon, post_arc,post_utm]
+            
+    else:
+        # new_range_samples = range_samples // resample_factor
+        # new_azimuth_lines = azimuth_lines // resample_factor
+        new_post_lat, new_post_lon = post_lat * resample_factor, post_lon * resample_factor
+        new_post_arc, new_post_utm = post_arc * resample_factor, post_utm * resample_factor
+                     
+        print("-------------------------------------------------------------")
+        print("Here you choose resample the image with a factor of %d." %resample_factor)
+        print("The pixel resoluton of resampled InSAR image is %f arc-second, ~%f meters." \
+                 %(new_post_arc, new_post_utm))
+        print("-------------------------------------------------------------")
+            
+          
+        # create the rows and cols
+        rows, cols = np.arange(0, azimuth_lines, 1), np.arange(0, range_samples, 1)
+        # linear interpolation
+        interp_func = interpolate.interp2d(cols, rows, image_data, kind='linear')
+        
+        new_rows, new_cols = np.arange(0, azimuth_lines, resample_factor), \
+            np.arange(0, range_samples, resample_factor)                               
+            
+        new_image_arry = interp_func(new_cols, new_rows)
+            
+        new_azimuth_lines = new_image_arry.shape[0]
+        new_range_samples = new_image_arry.shape[1]
+        
+        new_parameters = [new_range_samples, new_azimuth_lines, corner_lat, corner_lon, new_post_lat, \
+                                new_post_lon, new_post_arc, new_post_utm]
+        new_image_arry2 = np.where(new_image_arry == 0, np.nan, new_image_arry)      
+        if plot_flag != 0:
+            print("Quick preview image is generated ...")
+            parse_files.plot_image(new_image_arry, new_parameters, data_flag)   
+                
+            # lats = np.linspace(corner_lat, corner_lat + (new_azimuth_lines - 1 ) * new_post_lat, new_azimuth_lines)
+            # lons = np.linspace(corner_lon, corner_lon + (new_range_samples - 1 ) * new_post_lon, new_range_samples)
+                
+            # # make the 0 vlaues to be nan to better plotting
+            # new_image_arry2 = np.where(new_image_arry == 0, np.nan, new_image_arry)
+            # #new_image_arry2 = new_image_arry
+            # plt.imshow(new_image_arry2, cmap = 'jet', vmin = np.nanmin(new_image_arry2), vmax = np.nanmax(new_image_arry2), \
+            #            origin = 'upper', extent= [np.min(lons), np.max(lons), np.min(lats), np.max(lats)], alpha = 1.0)
+            # plt.colorbar(label = 'Phase (radians)')
+            # plt.xlabel('Longitude')
+            # plt.ylabel('Latitude')
+            # plt.show()    
+                
+            
+        return new_image_arry2, new_parameters
+              
+    
+    
+    
+#--------------------------------------------------------------------------------------------     
+def get_ll(parameters):
+    
+    range_samples = parameters[0] # width
+    azimuth_lines = parameters[1] # nlines
+    corner_lat = parameters[2] 
+    corner_lon = parameters[3]
+    post_lat = parameters[4]
+    post_lon = parameters[5]
+    # post_arc = parameters[6]
+    # post_utm = parameters[7]
+    
+    lats = np.linspace(corner_lat, corner_lat + (azimuth_lines - 1 ) * post_lat, azimuth_lines)
+    lons = np.linspace(corner_lon, corner_lon + (range_samples - 1 ) * post_lon, range_samples)
+    
+    return lats, lons
 
 
-def deg2utm(lats, lons):
+
+def ll2utm(lats, lons):
     """
     The default is WGS84 system and its zone number.
 
@@ -233,7 +366,7 @@ def deg2utm(lats, lons):
 
 # -----------------------------------------------------------------------------
 # need to futher modification
-def utm2deg(utm_easting, utm_northing, utm_zone, utm_zone_letter):
+def utm2ll(utm_easting, utm_northing, utm_zone, utm_zone_letter):
     lats, lons = utm.to_latlon(utm_easting, utm_northing, utm_zone, utm_zone_letter)
     return lats, lons
     pass 
