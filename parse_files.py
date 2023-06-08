@@ -12,6 +12,7 @@ Created on Tue May 18 20:08:23 2023
 
 @author: zelong
 """
+import sys
 import numpy as np
 import struct
 import matplotlib.pyplot as plt
@@ -110,7 +111,10 @@ def get_image_data(image_file, para_file, swap_bytes = "big-endian"):
             print(f"Total {azimuth_lines}:")
 
             for i in range(azimuth_lines):
-                print(f"{i} ", end = '\r')
+                if i % 500 == 0:
+                    # print(f"{i} ", end = '\r')
+                    sys.stdout.write(f"{i} ")
+                    sys.stdout.flush()
                 for j in range(range_samples):
                     # >f, big-endian, 4 bytes float
                     chunk = file.read(4)
@@ -163,6 +167,7 @@ def plot_image_geo(image_data, parameters, data_flag = "insar_phase"):
     # make the 0 vlaues to be nan to better plotting
     data2 = np.where(image_data == 0, np.nan, image_data)
     #new_image_arry2 = new_image_arry
+    plt.figure()
     plt.imshow(data2, cmap = 'jet', vmin = np.nanmin(data2), vmax = np.nanmax(data2), \
                origin = 'upper', extent= [np.min(lons), np.max(lons), np.min(lats), np.max(lats)], alpha = 1.0)
     if data_flag == "insar_phase":
@@ -211,6 +216,7 @@ def plot_dem_geo(image_data, dem, parameters):
     # make the 0 vlaues to be nan to better plotting
     dem2 = np.where(image_data == 0, np.nan, dem)
     #new_image_arry2 = new_image_arry
+    plt.figure()
     plt.imshow(dem2, cmap = 'jet', vmin = np.nanmin(dem2), vmax = np.nanmax(dem2), \
                origin = 'upper', extent= [np.min(lons), np.max(lons), np.min(lats), np.max(lats)], alpha = 1.0)
        
@@ -259,6 +265,7 @@ def plot_image(data, parameters, data_flag = "insar_phase"):
     # make the 0 vlaues to be nan to better plotting
     # data2 = np.where(data == 0, np.nan, data)
     #new_image_arry2 = new_image_arry
+    plt.figure()
     plt.imshow(data, cmap = 'jet', vmin = np.nanmin(data), vmax = np.nanmax(data), \
                origin = 'upper')
     if data_flag == "insar_phase":
