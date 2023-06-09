@@ -1,4 +1,18 @@
 # SlipFinder for Static Slip Inversion
-> update: 2023-05-19 11:24  
+> update: 2023-06-09 23:43  
+
+- codes structure:
+  - parse_files.py  
+    - get_image_para
+    - get_image_data
+    - plot_image_geo
+    - plot_dem_gep
+    - plot_image 
+  - image_preprocessing
+    - phase2los
+    - deramp_dem
+    - resample_image
+
+
 
 
