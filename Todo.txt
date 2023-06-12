@@ -1,8 +1,8 @@
 #---------------------------------------------------------
 # DATA
 deg2utm
-remove dem-ralated error and orbit ramp (and atmosphere, like GACOS or others...?)
-resampling
+remove dem-ralated error and orbit ramp (and atmosphere, like GACOS or others...?)  --> Done
+resampling  --> Done
 
 
 image cropping (optional, for postseismic mainly)

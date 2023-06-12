@@ -331,6 +331,8 @@ def resample_image(image_data, parameters, resample_factor=1, plot_flag=0, data_
 
         return new_image_arry2, new_parameters
 
+def downsample_uni_image():
+    pass
 
 # --------------------------------------------------------------------------------------------
 def get_ll(parameters):
