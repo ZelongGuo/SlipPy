@@ -1,20 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-This script is used for reading the InSAR images.
-Reading the images output by unwrapping (like mcf) of GAMMA:
-    1. big endian
-    2. phase data
-The InSAR images processed by Gamma are binary files.
-
 Created on Thu May 18 15:32:47 2023
-
 @author: zelong
 """
 # import struct
 # import numpy as np
 # import os
-
 
 import parse_files
 from scipy import interpolate
@@ -43,8 +35,6 @@ dem_name = "/Users/zelong/testspace/2017_Iran_Coseismic/EQ_20171112_T72A/SIM/201
 # dem_par = "/misc/zs7/Zelong/EQ_DInSAR/EQ_20171112_T174A/FINAL/20171106_20171118.utm.dem.par"
 # -----------------------------------------------------------------------------------
 
-
-
 # get the data and parameters firstly
 # paras = parse_files.get_image_para(dem_par)
 unw, paras = parse_files.get_image_data(file_name, dem_par)
@@ -53,6 +43,7 @@ dem, _ = parse_files.get_image_data(dem_name, dem_par)
 # parse_files.plot_image(unw, paras, "insar_phase")
 # parse_files.plot_image(dem, paras, 'dem')
 
+############################  debuging from here, we change the paras from list to dic
 # parse_files.plot_image_geo(unw, paras, 'insar_phase')
 # parse_files.plot_dem_geo(unw, dem, paras)
 
@@ -71,6 +62,6 @@ los = image_preprocessing.deramp_dem(unw, paras, dem, mask, 6, 1, "sentinel")
 unw_los = image_preprocessing.phase2los(unw, paras, 'sentinel', 1)  # unit m
 
 # resampling if needed
-resample_los, resample_paras = image_preprocessing.resample_image(los, paras, 3, 1, "insar_los")
+resample_los, resample_paras = image_preprocessing.resample_image(unw_los, paras, 3, 1, "insar_los")
 parse_files.plot_image_geo(resample_los, resample_paras, 'insar_los')
 

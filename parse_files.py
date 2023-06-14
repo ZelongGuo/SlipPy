@@ -30,6 +30,9 @@ def get_image_para(para_file):
 
     Returns: the width, nlines and lon lat info of the InSAR image
     -------
+
+    Update log:
+    12.06.2023, update the return values as dic
     """
     try:
         with open(para_file, 'r') as file:
@@ -70,7 +73,17 @@ def get_image_para(para_file):
         print("The InSAR pixel resoluton is %f arc-second, ~%f meters." %(post_arc, post_utm))
         print("-------------------------------------------------------------")
 
-        return [width, nlines, corner_lat, corner_lon, post_lat, post_lon, post_arc, post_utm]
+        # return [width, nlines, corner_lat, corner_lon, post_lat, post_lon, post_arc, post_utm]
+        return {
+            'width': width,
+            'nlines': nlines,
+            'corner_lat': corner_lat,
+            'corner_lon': corner_lon,
+            'post_lat': post_lat,
+            'post_lon': post_lon,
+            'post_arc': post_arc,
+            'post_utm': post_utm
+        }
                     
     except IOError:
         print("Error: cannot open the parameter file, please check the file path!")
@@ -98,8 +111,8 @@ def get_image_data(image_file, para_file, swap_bytes = "big-endian"):
     
     parameters = get_image_para(para_file)
     
-    range_samples = parameters[0] # width
-    azimuth_lines = parameters[1] # nlines
+    range_samples = parameters['width']  # width
+    azimuth_lines = parameters['nlines']  # nlines
    
     
     try:
@@ -147,15 +160,14 @@ def plot_image_geo(image_data, parameters, data_flag = "insar_phase"):
     None.
 
     """
-      
-    range_samples = parameters[0] # width
-    azimuth_lines = parameters[1] # nlines
-    corner_lat = parameters[2] 
-    corner_lon = parameters[3]
-    post_lat = parameters[4]
-    post_lon = parameters[5]
-    post_arc = parameters[6]
-    post_utm = parameters[7]
+    range_samples = parameters['width'] # width
+    azimuth_lines = parameters['nlines'] # nlines
+    corner_lat = parameters['corner_lat']
+    corner_lon = parameters['corner_lon']
+    post_lat = parameters['post_lat']
+    post_lon = parameters['post_lon']
+    post_arc = parameters['post_arc']
+    post_utm = parameters['post_utm']
     
     print("Quick preview image with geocoding ...")
     print(f"Width: {range_samples}, Height: {azimuth_lines}")
@@ -196,15 +208,15 @@ def plot_dem_geo(image_data, dem, parameters):
     None.
 
     """
-   
-    range_samples = parameters[0] # width
-    azimuth_lines = parameters[1] # nlines
-    corner_lat = parameters[2] 
-    corner_lon = parameters[3]
-    post_lat = parameters[4]
-    post_lon = parameters[5]
-    post_arc = parameters[6]
-    post_utm = parameters[7]
+
+    range_samples = parameters['width'] # width
+    azimuth_lines = parameters['nlines'] # nlines
+    corner_lat = parameters['corner_lat']
+    corner_lon = parameters['corner_lon']
+    post_lat = parameters['post_lat']
+    post_lon = parameters['post_lon']
+    post_arc = parameters['post_arc']
+    post_utm = parameters['post_utm']
     
     print("Quick preview DEM with geocoding ...")
     print(f"Width: {range_samples}, Height: {azimuth_lines}")
@@ -246,14 +258,10 @@ def plot_image(data, parameters, data_flag = "insar_phase"):
     None.
 
     """
-    range_samples = parameters[0] # width
-    azimuth_lines = parameters[1] # nlines
-    # corner_lat = parameters[2] 
-    # corner_lon = parameters[3]
-    # post_lat = parameters[4]
-    # post_lon = parameters[5]
-    post_arc = parameters[6]
-    post_utm = parameters[7]
+    range_samples = parameters['width'] # width
+    azimuth_lines = parameters['nlines'] # nlines
+    post_arc = parameters['post_arc']
+    post_utm = parameters['post_utm']
     
     print("Quick preview image without geocoding ...")
     print(f"Width: {range_samples}, Height: {azimuth_lines}")
