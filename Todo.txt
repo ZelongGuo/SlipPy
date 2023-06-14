@@ -1,15 +1,14 @@
 #---------------------------------------------------------
+# READ FILES (OR Other Tools)
+parse file
+
 # DATA
-deg2utm
-remove dem-ralated error and orbit ramp (and atmosphere, like GACOS or others...?)  --> Done
-resampling  --> Done
-
-
-image cropping (optional, for postseismic mainly)
-image downsampling
-
-
-
+image_preprocessing
+  - deg2utm
+  - remove dem-ralated error and orbit ramp (and atmosphere, like GACOS or others...?)  --> Done
+  - resampling  --> Done
+  - image cropping (optional, for postseismic mainly)
+  - image downsampling
 
 # FAULTT
 
