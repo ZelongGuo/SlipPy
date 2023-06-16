@@ -43,12 +43,12 @@ def phase2los(phase_data, parameters, satellite="sentinel", plot_flag=0):
 
     """
 
-    range_samples = parameters[0]  # width
-    azimuth_lines = parameters[1]  # nlines
-    corner_lat = parameters[2]
-    corner_lon = parameters[3]
-    post_lat = parameters[4]
-    post_lon = parameters[5]
+    range_samples = parameters['width']  # width
+    azimuth_lines = parameters['nlines']  # nlines
+    corner_lat = parameters['corner_lat']
+    corner_lon = parameters['corner_lon']
+    post_lat = parameters['post_lat']
+    post_lon = parameters['post_lon']
 
     if satellite == "sentinel" or satellite == "sentinel-1" or satellite == "s1":
         radar_freq = 5.40500045433e9  # Hz
@@ -120,6 +120,11 @@ def deramp_dem(phase_data, parameters, dem_data, mask, sig_factor=4, deramp_meth
     unw_los = phase2los(phase_data, parameters, satellite, 0)  # unit m
     unw_mask = copy(unw_los)
     dem_mask = copy(dem_data)
+
+    #-----------------------------------------------
+    unw_mask = np.where(unw_mask == 0, np.nan, unw_mask)
+    dem_mask = np.where(unw_mask == 0, np.nan, dem_mask)
+    #-----------------------------------------------
 
     unw_mask[mask[0][0]:mask[0][1], mask[1][0]:mask[1][1]] = np.nan
 
@@ -259,14 +264,14 @@ def resample_image(image_data, parameters, resample_factor=1, plot_flag=0, data_
  
     """
 
-    range_samples = parameters[0]  # width
-    azimuth_lines = parameters[1]  # nlines
-    corner_lat = parameters[2]
-    corner_lon = parameters[3]
-    post_lat = parameters[4]
-    post_lon = parameters[5]
-    post_arc = parameters[6]
-    post_utm = parameters[7]
+    range_samples = parameters['width']  # width
+    azimuth_lines = parameters['nlines']  # nlines
+    corner_lat = parameters['corner_lat']
+    corner_lon = parameters['corner_lon']
+    post_lat = parameters['post_lat']
+    post_lon = parameters['post_lon']
+    post_arc = parameters['post_arc']
+    post_utm = parameters['post_utm']
 
     # resample the image or not, if not, do nothing
     if resample_factor == 1:

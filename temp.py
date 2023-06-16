@@ -43,10 +43,10 @@ dem, _ = parse_files.get_image_data(dem_name, dem_par)
 # parse_files.plot_image(unw, paras, "insar_phase")
 # parse_files.plot_image(dem, paras, 'dem')
 
-############################  debuging from here, we change the paras from list to dic
 # parse_files.plot_image_geo(unw, paras, 'insar_phase')
 # parse_files.plot_dem_geo(unw, dem, paras)
 
+###################### re-check the deramp_dem, you should remove the 0 vaules to nan before deramping
 # deramp and remove dem-raleted error if needed, it returns los (m)
 # --------------------
 mask = [[1200, 4500],
