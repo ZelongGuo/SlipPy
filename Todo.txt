@@ -1,16 +1,15 @@
 #---------------------------------------------------------
-# READ FILES (OR Other Tools)
-parse file
+# DATA PREPARING
+- parse file (Now for GAMMA only)
 
-# DATA
-image_preprocessing
+- image_preprocessing
   - deg2utm
   - remove dem-ralated error and orbit ramp (and atmosphere, like GACOS or others...?)  --> Done
   - resampling  --> Done
   - image cropping (optional, for postseismic mainly)
   - image downsampling
 
-# FAULTT
+# FAULT (class)
 
 # INVERSION
 
