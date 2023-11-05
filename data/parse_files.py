@@ -1,27 +1,24 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Some functions for parsing files and visualization:
-    get_image_para (.par files, e.g., .dem.par to get the image parameters from GAMMA)
-    get_image_data (deformation images to get the deformation phase from GAMMA)
-    check_folder4figs
-    plot_image_geo
-    plot_dem_geo
-    plot_image
-    
+Author: Zelong Guo, @ GFZ, Potsdam
+Email: zelong.guo@outlook.com
 Created on Tue May 18 20:08:23 2023
 
-@author: zelong
+#---------------------------------------------------------------------------------------------
+Some functions for parsing files from some processing software like GAMMA etc.:
+    get_image_para_gamma (.par files, e.g., .dem.par to get the image parameters from GAMMA)
+    get_image_data_gamma (deformation images to get the deformation phase from GAMMA)
+
 """
-import os.path
+
 import sys
 import numpy as np
 import struct
-import matplotlib.pyplot as plt
 
 
 # --------------------------------------------------------------------------------------------
-def get_image_para(para_file):
+def get_image_para_gamma(para_file):
     """
     function: read the parameter files.
     Parameters
@@ -90,7 +87,7 @@ def get_image_para(para_file):
 
 
 # --------------------------------------------------------------------------------------------
-def get_image_data(image_file, para_file, swap_bytes = "big-endian"):
+def get_image_data_gamma(image_file, para_file, swap_bytes="big-endian"):
     """
     Read the InSAR images (and DEM files if needed) From GAMMA.
 
@@ -104,13 +101,13 @@ def get_image_data(image_file, para_file, swap_bytes = "big-endian"):
 
     Returns
     -------
-    image_arry : array of imges for the follwing processing.
+    image_arry : array of images for the following processing.
     
     parameters : parameter from get_image_para
 
     """
     
-    parameters = get_image_para(para_file)
+    parameters = get_image_para_gamma(para_file)
     
     range_samples = parameters['width']  # width
     azimuth_lines = parameters['nlines']  # nlines
@@ -138,188 +135,6 @@ def get_image_data(image_file, para_file, swap_bytes = "big-endian"):
         
     except IOError: 
        print("Error: cannot open the image file, please check the file path or the parameters!")        
-
-
-def check_folder4figs(fig_name, folder_name='img'):
-    """
-    This function will return a path for figures saving.
-    The default path is the /img of current folder.
-
-    :param fig_name to save
-    :param folder_name: default is img
-    :return: fig_path for figures saving
-    """
-    # get the path of current folder
-    current_path = os.getcwd()
-    # check the folder's existence
-    folder_path = os.path.join(current_path, folder_name)
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
-    fig_path = os.path.join(folder_path, fig_name)
-
-    return fig_path
-
-
-# --------------------------------------------------------------------------------------------
-def plot_image_geo(image_data, parameters, fig_name, data_flag="insar_phase"):
-    """
-    Plot geocoded InSAR images.
-
-    Parameters
-    ----------
-    image_data : Image matrix (phase or los) reading from get_image_data.
-        
-    parameters : parameter from get_image_para
-
-    fig_name : figure name for saving
-        
-    data_flag : insar_phase or insar_los (the unit should be m)
-    The default is "insar_phase".
-
-    Returns
-    -------
-    None.
-
-    """
-    range_samples = parameters['width']  # width
-    azimuth_lines = parameters['nlines']  # nlines
-    corner_lat = parameters['corner_lat']
-    corner_lon = parameters['corner_lon']
-    post_lat = parameters['post_lat']
-    post_lon = parameters['post_lon']
-    post_arc = parameters['post_arc']
-    post_utm = parameters['post_utm']
-    
-    print("Quick preview image with geocoding ...")
-    print(f"Width: {range_samples}, Height: {azimuth_lines}")
-    print("The InSAR pixel resoluton is %f arc-second, ~%f meters." %(post_arc, post_utm))
-        
-    lats = np.linspace(corner_lat, corner_lat + (azimuth_lines - 1) * post_lat, azimuth_lines)
-    lons = np.linspace(corner_lon, corner_lon + (range_samples - 1) * post_lon, range_samples)
-    
-    # make the 0 vlaues to be nan to better plotting
-    data2 = np.where(image_data == 0, np.nan, image_data)
-    # new_image_arry2 = new_image_arry
-    plt.figure()
-    plt.imshow(data2, cmap='jet', vmin=np.nanmin(data2), vmax=np.nanmax(data2), \
-               origin='upper', extent=[np.min(lons), np.max(lons), np.min(lats), np.max(lats)], alpha=1.0)
-    if data_flag == "insar_phase":
-        plt.colorbar(label='Phase (radians)')
-    elif data_flag == "insar_los":
-        plt.colorbar(label='LOS (m)')
-   
-    plt.xlabel('Longitude')
-    plt.ylabel('Latitude')
-    # plt.show()
-    # save figs to /img
-    fig_path = check_folder4figs(fig_name) + '.png'
-    plt.savefig(fig_path)
-    print(f'Now you can check the figure at {fig_path}')
-
-
-def plot_dem_geo(image_data, dem, parameters, fig_name):
-    """
-    Plot geocoded DEM.
-
-    Parameters
-    ----------
-    image_data : Image matrix reading from get_image_data.
-    
-    dem: dem matrix reading from get_image_data.
-        
-    parameters : parameter from get_image_para
-
-    fig_name : figure name for saving
-         
-    Returns
-    -------
-    None.
-
-    """
-
-    range_samples = parameters['width']  # width
-    azimuth_lines = parameters['nlines']  # nlines
-    corner_lat = parameters['corner_lat']
-    corner_lon = parameters['corner_lon']
-    post_lat = parameters['post_lat']
-    post_lon = parameters['post_lon']
-    post_arc = parameters['post_arc']
-    post_utm = parameters['post_utm']
-    
-    print("Quick preview DEM with geocoding ...")
-    print(f"Width: {range_samples}, Height: {azimuth_lines}")
-    print("The InSAR pixel resoluton is %f arc-second, ~%f meters." %(post_arc, post_utm))
-        
-    lats = np.linspace(corner_lat, corner_lat + (azimuth_lines - 1 ) * post_lat, azimuth_lines)
-    lons = np.linspace(corner_lon, corner_lon + (range_samples - 1 ) * post_lon, range_samples)
-    
-    # make the 0 vlaues to be nan to better plotting
-    dem2 = np.where(image_data == 0, np.nan, dem)
-    #new_image_arry2 = new_image_arry
-    plt.figure()
-    plt.imshow(dem2, cmap='jet', vmin=np.nanmin(dem2), vmax=np.nanmax(dem2), \
-               origin='upper', extent=[np.min(lons), np.max(lons), np.min(lats), np.max(lats)], alpha=1.0)
-       
-    plt.colorbar(label='Elevation (m)')
-    plt.xlabel('Longitude')
-    plt.ylabel('Latitude')
-    # plt.show()
-    fig_path = check_folder4figs(fig_name) + '.png'
-    plt.savefig(fig_path)
-    print(f'Now you can check the figure at {fig_path}')
-
-
-
-def plot_image(data, parameters, fig_name, data_flag="insar_phase"):
-    """
-    Plot InSAR images (phase or los) or DEM (no geocoding).
-
-    Parameters
-    ----------
-    data : Image/dem matrix reading from get_image_data.
-        
-    parameters : parameter from get_image_para
-
-    fig_name : figure name for saving
-        
-    data_flag : insar_phase, insar_los (the unit should be m) or dem
-    The default is "insar_phase".
-
-    Returns
-    -------
-    None.
-
-    """
-    range_samples = parameters['width'] # width
-    azimuth_lines = parameters['nlines'] # nlines
-    post_arc = parameters['post_arc']
-    post_utm = parameters['post_utm']
-    
-    print("Quick preview image without geocoding ...")
-    print(f"Width: {range_samples}, Height: {azimuth_lines}")
-    print("The InSAR pixel resoluton is %f arc-second, ~%f meters." %(post_arc, post_utm))
-    
-    # lats = np.linspace(corner_lat, corner_lat + (azimuth_lines - 1 ) * post_lat, azimuth_lines)
-    # lons = np.linspace(corner_lon, corner_lon + (range_samples - 1 ) * post_lon, range_samples)
-    
-    # make the 0 vlaues to be nan to better plotting
-    # data2 = np.where(data == 0, np.nan, data)
-    # new_image_arry2 = new_image_arry
-    plt.figure()
-    plt.imshow(data, cmap='jet', vmin=np.nanmin(data), vmax=np.nanmax(data), \
-               origin='upper')
-    if data_flag == "insar_phase":
-        plt.colorbar(label='Phase (radians)')
-    elif data_flag == "insar_los":
-        plt.colorbar(label='LOS (m)')
-    elif data_flag == "dem":
-        plt.colorbar(label='Elevation (m)')
-    plt.xlabel('X (pixel number)')
-    plt.ylabel('Y (pixel number)')
-    # plt.show()
-    fig_path = check_folder4figs(fig_name) + '.png'
-    plt.savefig(fig_path)
-    print(f'Now you can check the figure at {fig_path}')
 
 
 # --------------------------------------------------------------------------------------------

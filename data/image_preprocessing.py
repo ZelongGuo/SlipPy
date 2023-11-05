@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-This script defines some functions for pre-processing of InSAR images, including:
-    phase2los
-    deramp_dem (deramp and remove dem-related errors)
-    resample_image
-    
-    deg2utm and utm2deg
-    
-    
+Author: Zelong Guo, @ GFZ, Potsdam
+Email: zelong.guo@outlook.com
 Created on Sat May 20 20:29:30 2023
 
-@author: zelong
+#---------------------------------------------------------------------------------------------
+This script defines some functions for pre-processing of InSAR images, including phase to los or
+los to phase, deramping (deramp and remove dem-related errors) as we as resampling and downsampling
+the images for the next step inversions ect.
+
 """
 
 # import utm
@@ -19,71 +17,50 @@ import numpy as np
 from scipy.constants import c
 import matplotlib.pyplot as plt
 from copy import copy
-import parse_files
+from data import parse_files
 from scipy import interpolate
 
 
-def phase2los(phase_data, parameters, satellite="sentinel", plot_flag=0):
+# ----------------------------------------------------------------------------------------------------------
+def phase2los(phase_data, satellite="sentinel"):
     """
-    after get_image data to get the los deformation
+    Converting InSAR phase to InSAR line-of-sight (los) disp.
 
     Parameters
     ----------
     phase_data : 
-        the phase data from get_image_data.
-    parameters : 
-        related info from get_image_data.
+        the phase data from get_image_data*.
+
     satellite : TYPE
         The default is sentinel
         satellite type: sentinel, alos ...
 
     Returns 
     -------
-    InSAR LOS deformation feiled (unit cm).
+    InSAR LOS deformation field (unit m).
 
     """
 
-    range_samples = parameters['width']  # width
-    azimuth_lines = parameters['nlines']  # nlines
-    corner_lat = parameters['corner_lat']
-    corner_lon = parameters['corner_lon']
-    post_lat = parameters['post_lat']
-    post_lon = parameters['post_lon']
-
     if satellite == "sentinel" or satellite == "sentinel-1" or satellite == "s1":
         radar_freq = 5.40500045433e9  # Hz
-        wavelength = c / radar_freq  # m
         # wavelength = 0.0555041577 # m
     elif satellite == "ALOS" or satellite == "alos":
         radar_freq = 1.27e9  # Hz
-        pass
     elif satellite == "ALOS-2/U":
         radar_freq = 1.2575e9
     elif satellite == "ALOS-2/{F,W}":
         radar_freq = 1.2365e9
+    else:
+        pass
 
+    wavelength = c / radar_freq  # m
     los = - (phase_data / 2 / np.pi * wavelength / 2)
-
-    if plot_flag != 0:
-        print("Quick preview image (LOS) is generated ...")
-
-        lats = np.linspace(corner_lat, corner_lat + (azimuth_lines - 1) * post_lat, azimuth_lines)
-        lons = np.linspace(corner_lon, corner_lon + (range_samples - 1) * post_lon, azimuth_lines)
-        plt.figure()
-        plt.imshow(los, cmap='jet', vmin=np.nanmin(los), vmax=np.nanmax(los), origin='upper', extent=[np.min(lons),
-                                                                                                      np.max(lons),
-                                                                                                      np.min(lats),
-                                                                                                      np.max(lats)],
-                   alpha=1.0)
-        plt.colorbar(label='Los Deformation (m)')
-        plt.xlabel('Longitude')
-        plt.ylabel('Latitude')
-        plt.show()
 
     # the unit is "m"    
     return los
 
 
+# ----------------------------------------------------------------------------------------------------------
 def deramp_dem(phase_data, parameters, dem_data, mask, sig_factor=4, deramp_method=1, satellite="sentinel"):
     """
     Deramping and remove dem-related errors from phase data.
@@ -91,23 +68,19 @@ def deramp_dem(phase_data, parameters, dem_data, mask, sig_factor=4, deramp_meth
 
     Parameters
     ----------
-    phase_data : insar phase data from get_image_data
-    
+    phase_data : insar phase data from get_image_data*
     parameters : 
-        related info from get_image_data.
+        related info from get_image_para*.
     dem_data : dem data from get_image_data
-        
     mask : mask matrix. Height, Width
         [[azimuth_begin, azimuth_end],
          [range_begin, range_end]]
-       
     sig_factor : you may need trial and error.
                 The default is 4.
     deramp_method : 
         1: a + bx + cy + d*dem (default)
         2: a + bx + cy + dxy + e*dem
         3: a + bx + cy + dxy + ex^2 + fy^2 + g*dem
-        
     satellite : to calculate the los deformation
         The default is sentinel
         satellite type: sentinel, alos ...
@@ -235,7 +208,6 @@ def deramp_dem(phase_data, parameters, dem_data, mask, sig_factor=4, deramp_meth
 
 
 # --------------------------------------------------------------------------------------------
-
 def resample_image(image_data, parameters, resample_factor=1, plot_flag=0, data_flag="insar_phase"):
     """
     Resampling the insar images (phase or los).
@@ -243,15 +215,11 @@ def resample_image(image_data, parameters, resample_factor=1, plot_flag=0, data_
     Parameters
     ----------
     image_data : phase or LOS insar images.
-        
     parameters : the image parameters from get_image_para
-       
     resample_factor : optional
         resampling factor, >1 is downsampling, <1 is upsampling. The default is 1.
-    
     plot_flag : TYPE, optional
         plot (1) or not (0). The default is 0.
-        
     data_flag: "insar_phase" or "insar_los".
 
     Returns

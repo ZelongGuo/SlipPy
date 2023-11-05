@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+Author: Zelong Guo, @ GFZ, Potsdam
+Email: zelong.guo@outlook.com
+Created on Sat May 20 20:29:30 2023
+
+#---------------------------------------------------------------------------------------------
 This script defines some functions for pre-processing of InSAR images, including:
     phase2los
     deramp_dem (deramp and remove dem-related errors)
 
-Created on Sat May 20 20:29:30 2023
-
-@author: zelong
 """
 
 # import utm
