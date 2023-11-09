@@ -7,9 +7,9 @@ Created on Sat May 20 20:29:30 2023
 
 #---------------------------------------------------------------------------------------------
 This script defines some functions for pre-processing of InSAR images, including:
-    phase2los
     deramp_dem (deramp and remove dem-related errors)
 
+#### NEED TO BE UPDATED ###
 """
 
 # import utm
@@ -21,91 +21,27 @@ from copy import copy
 from scipy import interpolate
 
 
-def phase2los(phase_data, parameters, satellite="sentinel", plot_flag=0):
-    """
-    after get_image data to get the los deformation
-
-    Parameters
-    ----------
-    phase_data :
-        the phase data from get_image_data.
-    parameters :
-        related info from get_image_data.
-    satellite : TYPE
-        The default is sentinel
-        satellite type: sentinel, alos ...
-
-    Returns
-    -------
-    InSAR LOS deformation feiled (unit cm).
-
-    """
-
-    range_samples = parameters['width']  # width
-    azimuth_lines = parameters['nlines']  # nlines
-    corner_lat = parameters['corner_lat']
-    corner_lon = parameters['corner_lon']
-    post_lat = parameters['post_lat']
-    post_lon = parameters['post_lon']
-
-    if satellite == "sentinel" or satellite == "sentinel-1" or satellite == "s1":
-        radar_freq = 5.40500045433e9  # Hz
-        wavelength = c / radar_freq  # m
-        # wavelength = 0.0555041577 # m
-    elif satellite == "ALOS" or satellite == "alos":
-        radar_freq = 1.27e9  # Hz
-        pass
-    elif satellite == "ALOS-2/U":
-        radar_freq = 1.2575e9
-    elif satellite == "ALOS-2/{F,W}":
-        radar_freq = 1.2365e9
-
-    los = - (phase_data / 2 / np.pi * wavelength / 2)
-
-    if plot_flag != 0:
-        print("Quick preview image (LOS) is generated ...")
-
-        lats = np.linspace(corner_lat, corner_lat + (azimuth_lines - 1) * post_lat, azimuth_lines)
-        lons = np.linspace(corner_lon, corner_lon + (range_samples - 1) * post_lon, azimuth_lines)
-        plt.figure()
-        plt.imshow(los, cmap='jet', vmin=np.nanmin(los), vmax=np.nanmax(los), origin='upper', extent=[np.min(lons),
-                                                                                                      np.max(lons),
-                                                                                                      np.min(lats),
-                                                                                                      np.max(lats)],
-                   alpha=1.0)
-        plt.colorbar(label='Los Deformation (m)')
-        plt.xlabel('Longitude')
-        plt.ylabel('Latitude')
-        plt.show()
-
-    # the unit is "m"
-    return los
-
-
 def deramp_dem(phase_data, parameters, dem_data, mask, sig_factor=4, deramp_method=1, satellite="sentinel"):
     """
-    Deramping and remove dem-related errors from phase data.
+    Deramping and remove dem-related errors from unwrapping phase data.
+    Remove orbit errors by applying a best-fitting polynomial to individual interferogram.
     Return LOS image.
 
     Parameters
     ----------
-    phase_data : insar phase data from get_image_data
-
+    phase_data : insar phase data from get_image_data*
     parameters :
-        related info from get_image_data.
+        related info from get_image_para*.
     dem_data : dem data from get_image_data
-
     mask : mask matrix. Height, Width
         [[azimuth_begin, azimuth_end],
          [range_begin, range_end]]
-
     sig_factor : you may need trial and error.
                 The default is 4.
     deramp_method :
         1: a + bx + cy + d*dem (default)
         2: a + bx + cy + dxy + e*dem
         3: a + bx + cy + dxy + ex^2 + fy^2 + g*dem
-
     satellite : to calculate the los deformation
         The default is sentinel
         satellite type: sentinel, alos ...
@@ -230,4 +166,3 @@ def deramp_dem(phase_data, parameters, dem_data, mask, sig_factor=4, deramp_meth
 
     unw_flat = np.where(phase_data == 0, 0, unw_flat)
     return unw_flat
-
