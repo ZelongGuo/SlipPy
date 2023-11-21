@@ -8,8 +8,8 @@ Created on 21.07.23
 """
 
 # import class
-# initialization
+# initialization, see python.md
 
-# see python.md
+# from . import data
 
-from data import *
+# __all__ = ['data']

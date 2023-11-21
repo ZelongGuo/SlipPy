@@ -12,10 +12,15 @@ Some functions for parsing files from some processing software like GAMMA etc.:
 
 """
 
+__author__ = "Zelong Guo"
+
 import sys
 import numpy as np
 import struct
 
+# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+# | G | A | M | M | A |
+# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 # --------------------------------------------------------------------------------------------
 def get_image_para_gamma(para_file):
@@ -24,7 +29,8 @@ def get_image_para_gamma(para_file):
     Parameters
     ----------
     para_file : text file 
-        parameter files like *.utm.dem.par
+        parameter files like *.utm.dem.par which aligns with the sar images after
+        co-registration of dem and mli, resampling or oversampling dem file to proper resolution cell
 
     Return: the width, nlines and lon lat info of the InSAR image
     -------
@@ -89,15 +95,16 @@ def get_image_para_gamma(para_file):
 # --------------------------------------------------------------------------------------------
 def get_image_data_gamma(image_file, para_file, swap_bytes="big-endian"):
     """
-    Read the InSAR images (and DEM files if needed) From GAMMA.
+    Read the InSAR images (observations, azimuth and incidence files) and DEM files if needed From GAMMA.
 
     Parameters
     ----------
     image_file : big-endian files of insar images or dem from GAMMA
 
-    para_file : the image parameters from get_image_para
+    para_file : the image parameters from get_image_para, should *dem.par
     
-    swap_bytes : The default is "big-endian" (only big-endian is supported now) .
+    swap_bytes : The default is "big-endian" which is also default setting from GAMMA files (only big-endian
+     is supported now).
 
     Returns
     -------
