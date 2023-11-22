@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+InSAR data and related operations.
+
 Author: Zelong Guo, @ GFZ, Potsdam
 Email: zelong.guo@outlook.com
 Created on Tue May 18 20:08:23 2023
