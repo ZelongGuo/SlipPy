@@ -6,7 +6,7 @@ This is the base class for SLipPy.
 Created on Tue Nov. 21 2023
 @author: Zelong Guo, GFZ, Potsdam
 """
-class Slip(object):
+class SlipPy(object):
     """
     A parent class to other modules of SlipPy.
     """
