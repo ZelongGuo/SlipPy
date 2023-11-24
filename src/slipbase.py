@@ -6,6 +6,14 @@ This is the base class for SLipPy.
 Created on Tue Nov. 21 2023
 @author: Zelong Guo, GFZ, Potsdam
 """
-class slipbase(object):
-    pass
+class Slip(object):
+    """
+    A parent class to other modules of SlipPy.
+    """
+    def __init__(self, name):
+        self.name = name
+
+    def test_stuff(self):
+        print("This is a test of the parent class SLip.")
+        print(__file__)
  
