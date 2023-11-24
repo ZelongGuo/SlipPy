@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-""" This is a global template file, you could move it to a specific location of your working directory,
-please note the issue of importing top-level packages ...
+""" This is a global template file, you could move it to a specific location of your working directory and make
+corresponding changes as you need.
 
 Created on Thu May 18 15:32:47 2023
 @author: Zelong Guo, GFZ, Potsdam
 """
 
-BASE_DIR = "Users/zelong/codes/SlipPy/src"
+BASE_DIR = "Users/zelong/codes/SlipPy/"
 # add the path of the source files to sys.path
 sys.path.append(BASE_DIR)
 
