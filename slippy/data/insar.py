@@ -22,13 +22,13 @@ import numpy as np
 import struct
 
 # SlipPy libs
-from ..slipbase import Slip
+from ..slippy import SlipPy
 
 
 # Insar Class
-class InSAR(Slip):
-    """
-    Insar class for handling InSAR data.
+class InSAR(SlipPy):
+    """Insar class for handling InSAR data.
+
     """
 
     def __init__(self, name, notes="InSAR"):

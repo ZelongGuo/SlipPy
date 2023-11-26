@@ -6,6 +6,3 @@ Created on 10.11.23
 @author: Zelong Guo
 @GFZ, Potsdam
 """
-# intra-package relative imports
-# from .. import slipbase
-# from ..slipbase import Slip
