@@ -29,11 +29,13 @@ from ..slippy import SlipPy
 class InSAR(SlipPy):
     """Insar class for handling InSAR data.
 
+    Args:
+
     """
 
     def __init__(self, name, notes="InSAR"):
         # init properties from parent class
-        super(Insar, self).__init__(name)
+        super(InSAR, self).__init__(name)
 
         # Initialization
         self.notes = notes
