@@ -29,7 +29,7 @@ from ..slippy import SlipPy
 class InSAR(SlipPy):
     """Insar class for handling InSAR data.
 
-    Args:
+    Args: 
 
     """
 
