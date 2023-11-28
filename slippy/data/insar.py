@@ -7,11 +7,6 @@ Author: Zelong Guo, @ GFZ, Potsdam
 Email: zelong.guo@outlook.com
 Created on Tue May 18 20:08:23 2023
 
-#---------------------------------------------------------------------------------------------
-Some functions for parsing files from some processing software like GAMMA etc.:
-    get_image_para_gamma (.par files, e.g., .dem.par to get the image parameters from GAMMA)
-    get_image_data_gamma (deformation images to get the deformation phase from GAMMA)
-
 """
 
 __author__ = "Zelong Guo"
@@ -29,48 +24,73 @@ from ..slippy import SlipPy
 class InSAR(SlipPy):
     """Insar class for handling InSAR data.
 
-    Args: 
+    Args:
+        - name:     instance name
+        - lon0:     longitude of the UTM zone
+        - lat0:     latitude of the UTM zone
+        - ellps:    ellipsoid, default = "WGS84"
+
+    Return:
+        None.
 
     """
 
-    def __init__(self, name, notes="InSAR"):
-        # init properties from parent class
-        super(InSAR, self).__init__(name)
+    def __init__(self, name, lon0=None, lat0=None, ellps="WGS84", utmzone=None):
+        # call init function of the parent class to initialize
+        super().__init__(name, lon0, lat0, ellps, utmzone)
 
-        # Initialization
-        self.notes = notes
+        print("-------------------------------------------------------------")
+        print(f"Now we initialize the InSAR instance {self.name}...")
+
+        # Internal initialization
+        # format of data_ori: lon lat x y phase los azimuth incidence Ue Un Uu
+        self.data_ori = None
+        # InSAR images' parameters like width, length, corner coordinates etc.
+        self.parameters = None
+        # self.azi = None
+        # self.inc = None
+
 
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     # | G | A | M | M | A |
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    def read_from_gamma(self, para_file):
-        """Read InSAR interferograms from GAMMA with the parameter files.
+
+    def read_from_gamma(self, para_file, phase_file, azi_file, inc_file):
+        """Read InSAR files (including phase, incidence, azimuth and DEM files) processed by GAMMA software
+        with the parameter files.
+
+        This method will assign values to the instance attribute, data_ori.
 
         Args:
-            para_file :     para_files, parameter files like *.utm.dem.par which aligns with the sar images after
-                            co-registration of dem and mli, resampling or oversampling dem file to proper resolution cell
+            - para_file:        parameter files like *.utm.dem.par which aligns with the sar images after
+            co-registration of dem and mli, resampling or oversampling dem file to proper resolution cell
+            - phase_file:       filename of InSAR phase data
+            - azi_file:         filename of azimuth file
+            - inc_file:         filename of incidence file
 
-        Return: the width, nlines and lon lat info of the InSAR image
+        Return:
+            None.
         -------
 
         Update log:
         12.06.2023, update the return values as dic
         """
+
+        # Firstly we read the para_file to get the porameters
         try:
             with open(para_file, 'r') as file:
                 print("-------------------------------------------------------------")
                 print("Now we are reading the parameter file...")
-                print("-------------------------------------------------------------")
                 for line in file:
 
                    # line = line.strip()
                    # print(line)
 
                     if line.startswith('width:'):
-                        width = int(line.strip().split(':')[1])
+                        range_samples = int(line.strip().split(':')[1])
                         print(line)
                     elif line.startswith('nlines:'):
-                        nlines = int(line.strip().split(':')[1])
+                        azimuth_lines = int(line.strip().split(':')[1])
                         print(line)
                     elif line.startswith('corner_lat:'):
                         corner_lat = float(line.strip().split(':')[1].split()[0])
@@ -91,13 +111,13 @@ class InSAR(SlipPy):
             # post_arc2 = "{:.2f}".format(post_arc)
             # post_utm2 = "{:.2f}".format(post_utm)
             # print("The InSAR pixel resoluton is {} arc-second, ~{} meters." .format(post_arc2, post_utm2))
-            print("The InSAR pixel resoluton is %f arc-second, ~%f meters." %(post_arc, post_utm))
             print("-------------------------------------------------------------")
+            print(f"The InSAR pixel resoluton is {post_arc:.3f} arc-second, ~{post_utm:.3f} meters.")
 
-            # return [width, nlines, corner_lat, corner_lon, post_lat, post_lon, post_arc, post_utm]
-            return {
-                'width': width,
-                'nlines': nlines,
+            # parameters: {width, nlines, corner_lat, corner_lon, post_lat, post_lon, post_arc, post_utm}
+            self.parameters = {
+                'range_samples(width)': range_samples,
+                'azimuth_lines(nlines)': azimuth_lines,
                 'corner_lat': corner_lat,
                 'corner_lon': corner_lon,
                 'post_lat': post_lat,
@@ -108,6 +128,60 @@ class InSAR(SlipPy):
 
         except IOError:
             print("Error: cannot open the parameter file, please check the file path!")
+
+        # Then we read the phase, azimuth and the incidence files to get the original data. All the files
+        # processed by GAMMA are big-endian (swap_bytes="big-endian").
+        try:
+            with open(phase_file, 'rb') as f1, open(azi_file, 'rb') as f2, open(inc_file, 'rb') as f3:
+                phase = np.zeros([range_samples, azimuth_lines])
+                azimuth = np.zeros([range_samples, azimuth_lines])
+                incidence = np.zeros([range_samples, azimuth_lines])
+
+                # need read in column
+                print("-------------------------------------------------------------")
+                print("Now we are reading the phase, azimuth and incidence images (binary files)...")
+                print(f"Total {azimuth_lines}:")
+
+                for i in range(azimuth_lines):
+                    if i % 500 == 0:
+                        # print(f"{i} ", end = '\r')
+                        sys.stdout.write(f"{i} ")
+                        sys.stdout.flush()
+                    for j in range(range_samples):
+                        # >f, big-endian, 4 bytes float
+                        chunk = f1.read(4)
+                        phase[j][i] = struct.unpack('>f', chunk)[0]
+                        chunk = f2.read(4)
+                        azimuth[j][i] = struct.unpack('>f', chunk)[0]
+                        chunk = f3.read(4)
+                        incidence[j][i] = struct.unpack('>f', chunk)[0]
+
+            phase = phase.transpose().reshape(-1, 1)
+            azimuth = azimuth.transpose().reshape(-1, 1)
+            incidence = incidence.transpose().reshape(-1, 1)
+            lats = np.linspace(corner_lat, corner_lat + (azimuth_lines - 1) * post_lat, azimuth_lines)
+            lons = np.linspace(corner_lon, corner_lon + (range_samples - 1) * post_lon, range_samples)
+            Lons,Lats = np.meshgrid(lons, lats)
+            Lons = Lons.reshape(-1, 1)
+            Lats = Lats.reshape(-1, 1)
+
+            self.data_ori = np.hstack([Lons, Lats, phase, azimuth, incidence])
+
+            filename = ("/Users/zelong/Desktop/test.txt")
+            np.savetxt(filename, self.data_ori)
+
+            # TO DO:
+            # converting to UTM, and the unit vectors of InSAR data
+
+
+        except IOError:
+            print("Error: cannot open the image file, please check the file path or the parameters!")
+
+
+    def deramp(self, dem_file):
+        pass
+
+
 
 
     # --------------------------------------------------------------------------------------------
