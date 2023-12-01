@@ -75,36 +75,71 @@ Created on 21.07.23
 
 # # -------------------------------------------------------------
 #
-# from pyproj import CRS
+# from pyproj import CRS, Transformer
 # from pyproj.aoi import AreaOfInterest
 # from pyproj.database import query_utm_crs_info
+# import numpy as np
+#
+# crs1 = CRS("WGS84")
+# print("----- crs1 -------")
+# print(crs1)
 #
 # utm_crs_list = query_utm_crs_info(
-#     datum_name="WGS 84",
+#     datum_name= "WGS84", #"NAD83", #"WGS 84",
 #     area_of_interest=AreaOfInterest(
-#         west_lon_degree=-93.581543,
-#         south_lat_degree=42.032974,
-#         east_lon_degree=-93.581543,
-#         north_lat_degree=42.032974,
+#         west_lon_degree=-95,
+#         south_lat_degree=41,
+#         east_lon_degree=-91,
+#         north_lat_degree=45,
 #     ),
 # )
 #
-# print(utm_crs_list)
+#
+# # print(utm_crs_list)
 #
 # utm_crs = CRS.from_epsg(utm_crs_list[0].code)
-#
+# print("----- utm_crs -------")
 # print(utm_crs)
+#
+# lonlat = np.array([[-90.2897635, 40.1467463],
+#                    [-91.4456356, 43.5353664],
+#                    [-94.7463463, 44.8363636],
+#                    [-94.9236646, 42.9463463]])
+#
+#
+# transformer1 = Transformer.from_crs(crs1, utm_crs, always_xy=True)
+# b1, b2 = transformer1.transform(lonlat[:, 0], lonlat[:, 1])
+#
+# transformer2 = Transformer.from_crs(utm_crs,utm_crs.geodetic_crs, always_xy=True)
+# c = transformer2.transform(b1, b2)
+#
+# transformer3 = Transformer.from_crs(utm_crs, crs1, always_xy=True)
+# d = transformer3.transform(b1, b2)
+#
+# utm_zone_crs = CRS(proj="utm", zone=22, ellps="WGS84")
+# transformer4 = Transformer.from_crs(crs1, utm_zone_crs, always_xy=True)
+# e = transformer4.transform(lonlat[:, 0], lonlat[:, 1])
 
-# # -------------------------------------------------------------
+# # # -------------------------------------------------------------
+# import numpy as np
+#
+# a = np.arange(3*4).reshape(3, 4).flatten().reshape(-1, 1)
+# b = np.arange(3*4).reshape(3, 4).flatten().reshape(-1, 1)
+# c = np.hstack([a, b])
+#
+# print("---------------")
+# print(a)
+# print("---------------")
+# print(b)
+# print("---------------")
+# print(c)
+
+# #-------------------------------------------------------------
+
 import numpy as np
 
-a = np.arange(3*4).reshape(3, 4).flatten().reshape(-1, 1)
-b = np.arange(3*4).reshape(3, 4).flatten().reshape(-1, 1)
-c = np.hstack([a, b])
+a = np.arange(1, 100, 1)
+b = a[::3]
 
-print("---------------")
-print(a)
-print("---------------")
-print(b)
-print("---------------")
-print(c)
+matrix_list = [[1, 2, 3, 3], [4, 5, 6, 6], [7, 8, 9,9], [10, 11, 12, 13]]
+c = matrix_list[::2]

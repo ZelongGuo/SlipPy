@@ -10,18 +10,22 @@ Created on Tue May 18 20:08:23 2023
 """
 
 __author__ = "Zelong Guo"
+__version__ = "1.0.0"
 
 # Standard and third-party libs
 import sys
-import numpy as np
+from typing import Optional, Union, Tuple
 import struct
+import numpy as np
+from scipy.constants import c
+
 
 # SlipPy libs
-from ..slippy import SlipPy
+from ..slippy import GeoTrans
 
 
 # Insar Class
-class InSAR(SlipPy):
+class InSAR(GeoTrans):
     """Insar class for handling InSAR data.
 
     Args:
@@ -35,7 +39,12 @@ class InSAR(SlipPy):
 
     """
 
-    def __init__(self, name, lon0=None, lat0=None, ellps="WGS84", utmzone=None):
+    def __init__(self,
+                 name: str,
+                 lon0: Optional[float] = None,
+                 lat0: Optional[float] = None,
+                 ellps: str = "WGS84",
+                 utmzone: Optional[str] = None) -> None:
         # call init function of the parent class to initialize
         super().__init__(name, lon0, lat0, ellps, utmzone)
 
@@ -55,11 +64,17 @@ class InSAR(SlipPy):
     # | G | A | M | M | A |
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-    def read_from_gamma(self, para_file, phase_file, azi_file, inc_file):
+    def read_from_gamma(self,
+                        para_file: str,
+                        phase_file: str,
+                        azi_file: str,
+                        inc_file: str,
+                        satellite: str,
+                        downsample: int = 3) -> None:
         """Read InSAR files (including phase, incidence, azimuth and DEM files) processed by GAMMA software
-        with the parameter files.
+        with the parameter files, and preliminary downsampling the data if needed.
 
-        This method will assign values to the instance attribute, data_ori.
+        This method will assign values to the instance attribute, self.data.
 
         Args:
             - para_file:        parameter files like *.utm.dem.par which aligns with the sar images after
@@ -67,6 +82,8 @@ class InSAR(SlipPy):
             - phase_file:       filename of InSAR phase data
             - azi_file:         filename of azimuth file
             - inc_file:         filename of incidence file
+            - satellite:        Satellite type, "Sentinel-1", "ALOS" ...
+            - downsample:       downsample factor to reduce the number of the points
 
         Return:
             None.
@@ -82,10 +99,6 @@ class InSAR(SlipPy):
                 print("-------------------------------------------------------------")
                 print("Now we are reading the parameter file...")
                 for line in file:
-
-                   # line = line.strip()
-                   # print(line)
-
                     if line.startswith('width:'):
                         range_samples = int(line.strip().split(':')[1])
                         print(line)
@@ -104,6 +117,10 @@ class InSAR(SlipPy):
                     elif line.startswith('post_lon:'):
                         post_lon = float(line.strip().split(':')[1].split()[0])
                         print(line)
+                    # Here we also read the geodetic datum, usually it would be WGS 84.
+                    elif line.startswith('ellipsoid_name:'):
+                        ellps_name = line.strip().split(':')[1].strip()
+
                     else:
                         pass
             post_arc = post_lon * 3600 # to arcsecond
@@ -113,18 +130,6 @@ class InSAR(SlipPy):
             # print("The InSAR pixel resoluton is {} arc-second, ~{} meters." .format(post_arc2, post_utm2))
             print("-------------------------------------------------------------")
             print(f"The InSAR pixel resoluton is {post_arc:.3f} arc-second, ~{post_utm:.3f} meters.")
-
-            # parameters: {width, nlines, corner_lat, corner_lon, post_lat, post_lon, post_arc, post_utm}
-            self.parameters = {
-                'range_samples(width)': range_samples,
-                'azimuth_lines(nlines)': azimuth_lines,
-                'corner_lat': corner_lat,
-                'corner_lon': corner_lon,
-                'post_lat': post_lat,
-                'post_lon': post_lon,
-                'post_arc': post_arc,
-                'post_utm': post_utm
-            }
 
         except IOError:
             print("Error: cannot open the parameter file, please check the file path!")
@@ -156,86 +161,92 @@ class InSAR(SlipPy):
                         chunk = f3.read(4)
                         incidence[j][i] = struct.unpack('>f', chunk)[0]
 
-            phase = phase.transpose().reshape(-1, 1)
-            azimuth = azimuth.transpose().reshape(-1, 1)
-            incidence = incidence.transpose().reshape(-1, 1)
+            # phase and los (unit in m)
+            phase = phase.transpose().reshape(-1, 1)[::downsample]
+            los = self.__phase2los(phase=phase, satellite=satellite)
+            # azi and inc
+            azimuth = azimuth.transpose().reshape(-1, 1)[::downsample]
+            incidence = incidence.transpose().reshape(-1, 1)[::downsample]
+            # lon and lat
             lats = np.linspace(corner_lat, corner_lat + (azimuth_lines - 1) * post_lat, azimuth_lines)
             lons = np.linspace(corner_lon, corner_lon + (range_samples - 1) * post_lon, range_samples)
-            Lons,Lats = np.meshgrid(lons, lats)
-            Lons = Lons.reshape(-1, 1)
-            Lats = Lats.reshape(-1, 1)
+            Lons, Lats = np.meshgrid(lons, lats)
+            Lons = Lons.reshape(-1, 1)[::downsample]
+            Lats = Lats.reshape(-1, 1)[::downsample]
+            # utm
+            utm_x, utm_y = self.ll2xy(Lons, Lats)
 
-            self.data_ori = np.hstack([Lons, Lats, phase, azimuth, incidence])
+            self.data = np.hstack([Lons, Lats, utm_x, utm_y, phase, los, azimuth, incidence])
 
-            filename = ("/Users/zelong/Desktop/test.txt")
-            np.savetxt(filename, self.data_ori)
+            # filename = ("/Users/zelong/Desktop/test.txt")
+            # np.savetxt(filename, self.data_ori)
 
-            # TO DO:
-            # converting to UTM, and the unit vectors of InSAR data
-
+            # parameters: {width, nlines, corner_lat, corner_lon, post_lat, post_lon, post_arc, post_utm}
+            self.parameters = {
+                'range_samples(width)':     range_samples,
+                'azimuth_lines(nlines)':    azimuth_lines,
+                'corner_lat':               corner_lat,
+                'corner_lon':               corner_lon,
+                'post_lat':                 post_lat,
+                'post_lon':                 post_lon,
+                'post_arc':                 post_arc,
+                'post_utm':                 post_utm,
+                'ellps_name':               ellps_name,
+                'satellite':                satellite,
+                'los_unit':                 'm'
+            }
 
         except IOError:
             print("Error: cannot open the image file, please check the file path or the parameters!")
 
+# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+
+# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+    def __phase2los(self,
+                    phase: Union[float, np.ndarray],
+                    satellite: str) -> Union[float, np.ndarray]:
+        """Converting InSAR phase to InSAR line-of-sight (los) disp.
+
+        Args:
+            - phase:       InSAR phase data.
+            - satellite:        Satellite type, "Sentinel-1", "ALOS", "ALOS-2/U" ...
+
+        Returns:
+             - los:             InSAR LOS (unit in m)
+        """
+        if satellite in ("sentinel-1", "Sentinel-1", "s1", "S1"):
+            radar_freq = 5.40500045433e9  # Hz
+        elif satellite in ("ALOS", "alos"):
+            radar_freq = 1.27e9  # Hz
+        elif satellite == "ALOS-2/U":
+            radar_freq = 1.2575e9
+        elif satellite == "ALOS-2/{F,W}":
+            radar_freq = 1.2365e9
+        else:
+            raise ValueError("The radar frequency of this satellite is not yet specified!")
+
+        wavelength = c / radar_freq  # m
+        los = - (phase / 2 / np.pi * wavelength / 2)
+
+        # the unit is "m"
+        return los
+
+# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+    def __get_coner_coor(self):
+        pass
+
+# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
 
     def deramp(self, dem_file):
         pass
 
+# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+
+    def write2file(self, dem_file):
+        pass
 
 
-
-    # --------------------------------------------------------------------------------------------
-    def get_image_data_gamma(image_file, para_file, swap_bytes="big-endian"):
-        """
-        Read the InSAR images (observations, azimuth and incidence files) and DEM files if needed From GAMMA.
-
-        Parameters
-        ----------
-        image_file : big-endian files of insar images or dem from GAMMA
-
-        para_file : the image parameters from get_image_para, should *dem.par
-
-        swap_bytes : The default is "big-endian" which is also default setting from GAMMA files (only big-endian
-         is supported now).
-
-        Returns
-        -------
-        image_arry : array of images for the following processing.
-
-        parameters : parameter from get_image_para
-
-        """
-
-        parameters = get_image_para_gamma(para_file)
-
-        range_samples = parameters['width']  # width
-        azimuth_lines = parameters['nlines']  # nlines
-
-        try:
-            with open(image_file, 'rb') as file:
-                image_arry = np.zeros([range_samples, azimuth_lines])
-                # need read in column
-                print("Now we are reading the phase images (binary files)...")
-                print(f"Total {azimuth_lines}:")
-
-                for i in range(azimuth_lines):
-                    if i % 500 == 0:
-                        # print(f"{i} ", end = '\r')
-                        sys.stdout.write(f"{i} ")
-                        sys.stdout.flush()
-                    for j in range(range_samples):
-                        # >f, big-endian, 4 bytes float
-                        chunk = file.read(4)
-                        image_arry[j][i] = struct.unpack('>f', chunk)[0]
-
-            image_arry = image_arry.transpose()
-
-            return image_arry, parameters
-
-        except IOError:
-           print("Error: cannot open the image file, please check the file path or the parameters!")
-
-
-# --------------------------------------------------------------------------------------------
+# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
 if __name__ == "__main__":
-    print("Only functions are defined here.")
+    pass
+
