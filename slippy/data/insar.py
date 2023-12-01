@@ -14,7 +14,7 @@ __version__ = "1.0.0"
 
 # Standard and third-party libs
 import sys
-from typing import Optional, Union, Tuple
+from typing import Optional, Union, Tuple, Dict
 import struct
 import numpy as np
 from scipy.constants import c
@@ -43,7 +43,7 @@ class InSAR(GeoTrans):
                  name: str,
                  lon0: Optional[float] = None,
                  lat0: Optional[float] = None,
-                 ellps: str = "WGS84",
+                 ellps: str = "WGS 84",
                  utmzone: Optional[str] = None) -> None:
         # call init function of the parent class to initialize
         super().__init__(name, lon0, lat0, ellps, utmzone)
@@ -53,9 +53,9 @@ class InSAR(GeoTrans):
 
         # Internal initialization
         # format of data_ori: lon lat x y phase los azimuth incidence Ue Un Uu
-        self.data_ori = None
+        self.data = None
         # InSAR images' parameters like width, length, corner coordinates etc.
-        self.parameters = None
+        self.data_para = None
         # self.azi = None
         # self.inc = None
 
@@ -96,7 +96,7 @@ class InSAR(GeoTrans):
         # Firstly we read the para_file to get the porameters
         try:
             with open(para_file, 'r') as file:
-                print("-------------------------------------------------------------")
+                print("+-" * 50)
                 print("Now we are reading the parameter file...")
                 for line in file:
                     if line.startswith('width:'):
@@ -128,7 +128,7 @@ class InSAR(GeoTrans):
             # post_arc2 = "{:.2f}".format(post_arc)
             # post_utm2 = "{:.2f}".format(post_utm)
             # print("The InSAR pixel resoluton is {} arc-second, ~{} meters." .format(post_arc2, post_utm2))
-            print("-------------------------------------------------------------")
+            print("+-" * 50)
             print(f"The InSAR pixel resoluton is {post_arc:.3f} arc-second, ~{post_utm:.3f} meters.")
 
         except IOError:
@@ -143,7 +143,7 @@ class InSAR(GeoTrans):
                 incidence = np.zeros([range_samples, azimuth_lines])
 
                 # need read in column
-                print("-------------------------------------------------------------")
+                print("+-" * 50)
                 print("Now we are reading the phase, azimuth and incidence images (binary files)...")
                 print(f"Total {azimuth_lines}:")
 
@@ -167,6 +167,9 @@ class InSAR(GeoTrans):
             # azi and inc
             azimuth = azimuth.transpose().reshape(-1, 1)[::downsample]
             incidence = incidence.transpose().reshape(-1, 1)[::downsample]
+            # change to real azimuth and incidence with degree
+            azimuth = -180 - np.degrees(azimuth)
+            incidence = 90 - np.degrees(incidence)
             # lon and lat
             lats = np.linspace(corner_lat, corner_lat + (azimuth_lines - 1) * post_lat, azimuth_lines)
             lons = np.linspace(corner_lon, corner_lon + (range_samples - 1) * post_lon, range_samples)
@@ -176,24 +179,22 @@ class InSAR(GeoTrans):
             # utm
             utm_x, utm_y = self.ll2xy(Lons, Lats)
 
-            self.data = np.hstack([Lons, Lats, utm_x, utm_y, phase, los, azimuth, incidence])
+            # now we assign attributes to the instance
+            # self.data = np.hstack([Lons, Lats, utm_x, utm_y, phase, los, azimuth, incidence])
+            self.data = {
+                "lon_deg":      Lons,
+                "lat_deg":      Lats,
+                "x_km":         utm_x,
+                "y_km":         utm_y,
+                "phase_rad":    phase,
+                "los_m":        los,
+                "azi_deg":      azimuth,
+                "inc_deg":      incidence
+            }
 
-            # filename = ("/Users/zelong/Desktop/test.txt")
-            # np.savetxt(filename, self.data_ori)
-
-            # parameters: {width, nlines, corner_lat, corner_lon, post_lat, post_lon, post_arc, post_utm}
-            self.parameters = {
-                'range_samples(width)':     range_samples,
-                'azimuth_lines(nlines)':    azimuth_lines,
-                'corner_lat':               corner_lat,
-                'corner_lon':               corner_lon,
-                'post_lat':                 post_lat,
-                'post_lon':                 post_lon,
-                'post_arc':                 post_arc,
-                'post_utm':                 post_utm,
-                'ellps_name':               ellps_name,
+            self.data_para = {
                 'satellite':                satellite,
-                'los_unit':                 'm'
+                'datum_name':               ellps_name
             }
 
         except IOError:
@@ -232,9 +233,26 @@ class InSAR(GeoTrans):
         return los
 
 # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-    def __get_coner_coor(self):
-        pass
+    def plot(self,
+             key_value: str,
+             fig_name: str) -> None:
+        """Plot figure to SlipPy folder in current directory.
 
+        Args:
+            key_value:          Key value of data you want plotting, "los", "phase", "azi", "inc" ...
+            fig_name:           Specify a figure name without extension, .png file would be generated automatically.
+
+        Return:
+            None.
+        """
+
+        # check and create "SlipPy" folder under working directory
+        folder_name = self.check_folder()
+
+        if key_value not in self.data:
+            raise ValueError(f"Key {key_value} is not found in data!")
+
+        pass
 # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
 
     def deramp(self, dem_file):

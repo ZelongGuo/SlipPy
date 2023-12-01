@@ -9,6 +9,7 @@ Created on Tue Nov. 21 2023
 __author__ = "Zelong Guo"
 __version__ = "1.0.0"
 
+import os
 from typing import Optional, Union, Tuple
 import numpy as np
 from pyproj import CRS, Geod, Transformer
@@ -27,7 +28,7 @@ class GeoTrans(object):
         - name:     instance name of this parent class,
         - lon0:     longitude defining the center of the custom UTM zone,
         - lat0:     latitude defining the center of the custom UTM zone,
-        - ellps:    (optional, default is WGS84) reference ellipsoid,
+        - ellps:    (optional, default is "WGS 84") reference ellipsoid of the data
         - utmzone:  (optional, default is None) the number of the UTM zone.
 
     Return:
@@ -39,13 +40,14 @@ class GeoTrans(object):
                  name: str,
                  lon0: Optional[float] = None,
                  lat0: Optional[float] = None,
-                 ellps: str = "WGS84",
+                 ellps: str = "WGS 84",
                  utmzone: Optional[str] = None):
 
         self.name = name
         self.lon0 = lon0
         self.lat0 = lat0
         self.ellps = ellps
+
 
         self.__set_zone(lon0=lon0, lat0=lat0, ellps=ellps, utmzone=utmzone)
 
@@ -56,7 +58,7 @@ class GeoTrans(object):
     def __set_zone(self,
                    lon0: Optional[float] = None,
                    lat0: Optional[float] = None,
-                   ellps: str = "WGS84",
+                   ellps: str = "WGS 84",
                    utmzone: Optional[str] = None) -> None:
 
         """Sets the UTM zone in the class.
@@ -65,7 +67,7 @@ class GeoTrans(object):
         longitude (lon0) and latitude (lat0).
 
         Kwargs:
-            - ellps:    Reference Ellipsoid, default is WGS84
+            - ellps:    Reference Ellipsoid of the data, default is "WGS 84"
 
             :Method 1:
                 - utmzone:      International UTM zone number
@@ -155,10 +157,31 @@ class GeoTrans(object):
 
         return lon, lat
 
+# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+    def check_folder(self) -> str:
+        """Check and create a folder named "SlipPy" if it does not exist in current working directory.
+        This folder is used for saving files.
+
+        Args:
+            None.
+
+        Return:
+            folder_path:        Absolute folder path.
+        """
+
+        current_path = os.getcwd()
+        # check the folder's existence
+        folder_path = os.path.join(current_path, "SlipPy")
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+
+        return folder_path
+
 
 # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
 if __name__ == "__main__":
     test = GeoTrans('TEST', -93, 43)
+    test.check_folder4files()
 
     lonlat = np.array([[-90.2897635, 40.1467463],
                        [-91.4456356, 43.5353664],

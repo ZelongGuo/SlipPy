@@ -135,11 +135,40 @@ Created on 21.07.23
 # print(c)
 
 # #-------------------------------------------------------------
+#
+# import numpy as np
+#
+# a = np.arange(1, 100, 1)
+# b = a[::3]
+#
+# matrix_list = [[1, 2, 3, 3], [4, 5, 6, 6], [7, 8, 9,9], [10, 11, 12, 13]]
+# c = matrix_list[::2]
 
-import numpy as np
+# class A(object):
+#     def __init__(self, name, age):
+#         self.name = name
+#         self.age = age
+#     def add_age(self, *args):
+#         for i in args:
+#             if i == "name":
+#                 print(f"My name is {self.name}")
+#             elif i == "age":
+#                 print(f"Add age: {self.age +1}.")
+#             else:
+#                 raise ValueError("Wrong Value!!!")
+#
+# a = A("a", 20)
+# print("+-" * 20)
+# a.add_age("name")
+# print("+-" * 20)
+# a.add_age("age")
+# print("+-" * 20)
+# a.add_age("age", "name")
 
-a = np.arange(1, 100, 1)
-b = a[::3]
+# define dict
 
-matrix_list = [[1, 2, 3, 3], [4, 5, 6, 6], [7, 8, 9,9], [10, 11, 12, 13]]
-c = matrix_list[::2]
+a = {
+    "lon":  {"value": [1, 2, 3], "unit": "deg"},
+    "lat":  {"value": [4, 5, 6], "unit": "deg"},
+    "los":  {"value": [0.1, 0.2, 0.3], "unit": "m"}
+}
