@@ -172,3 +172,39 @@ a = {
     "lat":  {"value": [4, 5, 6], "unit": "deg"},
     "los":  {"value": [0.1, 0.2, 0.3], "unit": "m"}
 }
+
+def test(key):
+    if key not in a:
+        raise ValueError(f"key {key} is not in a!")
+    print(a[key]["value"])
+def test2(key):
+    match key:
+        case "lon" | "LON" | "longi":
+            print(a["lon"]["value"])
+        case "lat" | "Lat":
+            print(a["lat"]["value"])
+        case _:
+            raise ValueError("Error!")
+
+test2('lon')
+print("+-" * 50)
+test2("Lat")
+
+# import matplotlib.pyplot as plt
+# import numpy as np
+#
+# # Fixing random state for reproducibility
+# np.random.seed(19680801)
+#
+#
+# N = 50
+# x = np.random.rand(N)
+# y = np.random.rand(N)
+# colors = np.random.rand(N)
+# area = (30 * np.random.rand(N))**2  # 0 to 15 point radii
+#
+# # plt.scatter(x, y, s=area, c=colors, alpha=0.5)
+# plt.scatter(x, y, c=area, cmap="hsv")
+# plt.colorbar(label="label")
+#
+# plt.show()

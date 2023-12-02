@@ -12,12 +12,14 @@ Created on Tue May 18 20:08:23 2023
 __author__ = "Zelong Guo"
 __version__ = "1.0.0"
 
+import os.path
 # Standard and third-party libs
 import sys
 from typing import Optional, Union, Tuple, Dict
 import struct
 import numpy as np
 from scipy.constants import c
+import matplotlib.pyplot as plt
 
 
 # SlipPy libs
@@ -59,10 +61,7 @@ class InSAR(GeoTrans):
         # self.azi = None
         # self.inc = None
 
-
-    # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    # | G | A | M | M | A |
-    # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
     def read_from_gamma(self,
                         para_file: str,
@@ -87,10 +86,6 @@ class InSAR(GeoTrans):
 
         Return:
             None.
-        -------
-
-        Update log:
-        12.06.2023, update the return values as dic
         """
 
         # Firstly we read the para_file to get the porameters
@@ -101,22 +96,16 @@ class InSAR(GeoTrans):
                 for line in file:
                     if line.startswith('width:'):
                         range_samples = int(line.strip().split(':')[1])
-                        print(line)
                     elif line.startswith('nlines:'):
                         azimuth_lines = int(line.strip().split(':')[1])
-                        print(line)
                     elif line.startswith('corner_lat:'):
                         corner_lat = float(line.strip().split(':')[1].split()[0])
-                        print(line)
                     elif line.startswith('corner_lon:'):
                         corner_lon = float(line.strip().split(':')[1].split()[0])
-                        print(line)
                     elif line.startswith('post_lat:'):
                         post_lat = float(line.strip().split(':')[1].split()[0])
-                        print(line)
                     elif line.startswith('post_lon:'):
                         post_lon = float(line.strip().split(':')[1].split()[0])
-                        print(line)
                     # Here we also read the geodetic datum, usually it would be WGS 84.
                     elif line.startswith('ellipsoid_name:'):
                         ellps_name = line.strip().split(':')[1].strip()
@@ -128,7 +117,7 @@ class InSAR(GeoTrans):
             # post_arc2 = "{:.2f}".format(post_arc)
             # post_utm2 = "{:.2f}".format(post_utm)
             # print("The InSAR pixel resoluton is {} arc-second, ~{} meters." .format(post_arc2, post_utm2))
-            print("+-" * 50)
+            print(f"Range samples: {range_samples}, azimuth lines: {azimuth_lines} in {satellite} data.")
             print(f"The InSAR pixel resoluton is {post_arc:.3f} arc-second, ~{post_utm:.3f} meters.")
 
         except IOError:
@@ -145,7 +134,6 @@ class InSAR(GeoTrans):
                 # need read in column
                 print("+-" * 50)
                 print("Now we are reading the phase, azimuth and incidence images (binary files)...")
-                print(f"Total {azimuth_lines}:")
 
                 for i in range(azimuth_lines):
                     if i % 500 == 0:
@@ -161,6 +149,13 @@ class InSAR(GeoTrans):
                         chunk = f3.read(4)
                         incidence[j][i] = struct.unpack('>f', chunk)[0]
 
+            print("")
+            print(f"There will be ~{int(range_samples / downsample)}x{int(azimuth_lines / downsample)} in data"
+                  f" with downsample factor {downsample}.")
+            # make 0 values in phases, azi and inc to be Nan
+            azimuth = np.where(phase == 0, np.nan, azimuth)
+            incidence = np.where(phase == 0, np.nan, incidence)
+            phase = np.where(phase == 0, np.nan, phase)
             # phase and los (unit in m)
             phase = phase.transpose().reshape(-1, 1)[::downsample]
             los = self.__phase2los(phase=phase, satellite=satellite)
@@ -182,14 +177,14 @@ class InSAR(GeoTrans):
             # now we assign attributes to the instance
             # self.data = np.hstack([Lons, Lats, utm_x, utm_y, phase, los, azimuth, incidence])
             self.data = {
-                "lon_deg":      Lons,
-                "lat_deg":      Lats,
-                "x_km":         utm_x,
-                "y_km":         utm_y,
-                "phase_rad":    phase,
-                "los_m":        los,
-                "azi_deg":      azimuth,
-                "inc_deg":      incidence
+                "lon":          {"value": Lons, "unit": "degree"},
+                "lat":          {"value": Lats, "unit": "degree"},
+                "x":            {"value": utm_x, "unit": "km"},
+                "y":            {"value": utm_y, "unit": "km"},
+                "phase":        {"value": phase, "unit": "radian"},
+                "los":          {"value": los, "unit": "m"},
+                "azi":          {"value": azimuth, "unit": "degree"},
+                "inc":          {"value": incidence, "unit": "degree"},
             }
 
             self.data_para = {
@@ -199,8 +194,6 @@ class InSAR(GeoTrans):
 
         except IOError:
             print("Error: cannot open the image file, please check the file path or the parameters!")
-
-# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
 
 # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
     def __phase2los(self,
@@ -233,14 +226,17 @@ class InSAR(GeoTrans):
         return los
 
 # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-    def plot(self,
-             key_value: str,
-             fig_name: str) -> None:
+    def uniform_downsample(self):
+        pass
+
+# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+    def plot(self, key_value: str, fig_name: str) -> None:
         """Plot figure to SlipPy folder in current directory.
 
         Args:
             key_value:          Key value of data you want plotting, "los", "phase", "azi", "inc" ...
-            fig_name:           Specify a figure name without extension, .png file would be generated automatically.
+            fig_name:           Specify a figure name without extension, .png file would be generated
+                                and saved automatically.
 
         Return:
             None.
@@ -249,10 +245,31 @@ class InSAR(GeoTrans):
         # check and create "SlipPy" folder under working directory
         folder_name = self.check_folder()
 
-        if key_value not in self.data:
-            raise ValueError(f"Key {key_value} is not found in data!")
+        # plotting
+        match key_value:
+            # plot phase
+            case "phase" | "los" | "azi" | "inc":
+                if key_value == "phase":
+                    wrapped_phase = np.angle(np.exp(1j * self.data[key_value]["value"]))
+                    plt.scatter(self.data["lon"]["value"], self.data["lat"]["value"],
+                                c=wrapped_phase, vmin=-np.pi, vmax=np.pi, cmap="rainbow")
+                else:
+                    plt.scatter(self.data["lon"]["value"], self.data["lat"]["value"],
+                                c=self.data[key_value]["value"], cmap="rainbow")
 
-        pass
+                plt.xlabel("Longitude (deg)")
+                plt.ylabel("Latitude (deg)")
+                plt.title(f"{self.name}")
+                plt.colorbar(label=f"{key_value} [{self.data[key_value]['unit']}]")
+                # plt.show()
+                plt.savefig(os.path.join(folder_name, fig_name + '.png'))
+                plt.close()
+                print(f"Now {fig_name} is saved to {os.path.join(folder_name, fig_name + '.png')}")
+
+            case _:
+                raise ValueError(f"Key {key_value} is not in data!")
+
+
 # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
 
     def deramp(self, dem_file):
