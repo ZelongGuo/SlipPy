@@ -36,11 +36,7 @@ class GeoTrans(object):
 
     """
 
-    def __init__(self,
-                 name: str,
-                 lon0: Optional[float] = None,
-                 lat0: Optional[float] = None,
-                 ellps: str = "WGS 84",
+    def __init__(self, name: str, lon0: Optional[float] = None, lat0: Optional[float] = None, ellps: str = "WGS 84",
                  utmzone: Optional[str] = None):
 
         self.name = name
@@ -48,17 +44,13 @@ class GeoTrans(object):
         self.lat0 = lat0
         self.ellps = ellps
 
-
         self.__set_zone(lon0=lon0, lat0=lat0, ellps=ellps, utmzone=utmzone)
 
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
 
     # initialize UTM zone, this private method is called by __init__.
     # the initialization of following CRS referred to csi of Romain.
-    def __set_zone(self,
-                   lon0: Optional[float] = None,
-                   lat0: Optional[float] = None,
-                   ellps: str = "WGS 84",
+    def __set_zone(self, lon0: Optional[float] = None, lat0: Optional[float] = None, ellps: str = "WGS 84",
                    utmzone: Optional[str] = None) -> None:
 
         """Sets the UTM zone in the class.
@@ -83,7 +75,6 @@ class GeoTrans(object):
         # if the geodetic datum is WGS84, it equals to self.wgs = pp.CRS.from_epsg(4326)
         self.wgs = CRS(ellps)
 
-        # Cases
         if utmzone is not None:
             self.utm = CRS(proj='utm', zone=utmzone, ellps=ellps)
         else:
@@ -117,9 +108,8 @@ class GeoTrans(object):
         # self.ellps = ellps
 
 # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-    def ll2xy(self,
-              lon: Union[float, np.ndarray],
-              lat: Union[float, np.ndarray]) -> Tuple[Union[float, np.ndarray], Union[float, np.ndarray]]:
+    def ll2xy(self, lon: Union[float, np.ndarray], lat: Union[float, np.ndarray]) \
+            -> Tuple[Union[float, np.ndarray],Union[float, np.ndarray]]:
         """Converting longitudes and latitudes to UTM X Y coordinates.
 
         Args:
@@ -139,9 +129,8 @@ class GeoTrans(object):
         return x, y
 
 # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-    def xy2ll(self,
-              x: Union[float, np.ndarray],
-              y: Union[float, np.ndarray]) -> Tuple[Union[float, np.ndarray], Union[float, np.ndarray]]:
+    def xy2ll(self, x: Union[float, np.ndarray], y: Union[float, np.ndarray])\
+            -> Tuple[Union[float, np.ndarray], Union[float, np.ndarray]]:
         """Converting UTM X Y coordinates to longitudes and latitudes.
 
         Args:

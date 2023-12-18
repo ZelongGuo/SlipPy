@@ -167,28 +167,28 @@ Created on 21.07.23
 
 # define dict
 
-a = {
-    "lon":  {"value": [1, 2, 3], "unit": "deg"},
-    "lat":  {"value": [4, 5, 6], "unit": "deg"},
-    "los":  {"value": [0.1, 0.2, 0.3], "unit": "m"}
-}
-
-def test(key):
-    if key not in a:
-        raise ValueError(f"key {key} is not in a!")
-    print(a[key]["value"])
-def test2(key):
-    match key:
-        case "lon" | "LON" | "longi":
-            print(a["lon"]["value"])
-        case "lat" | "Lat":
-            print(a["lat"]["value"])
-        case _:
-            raise ValueError("Error!")
-
-test2('lon')
-print("+-" * 50)
-test2("Lat")
+# a = {
+#     "lon":  {"value": [1, 2, 3], "unit": "deg"},
+#     "lat":  {"value": [4, 5, 6], "unit": "deg"},
+#     "los":  {"value": [0.1, 0.2, 0.3], "unit": "m"}
+# }
+#
+# def test(key):
+#     if key not in a:
+#         raise ValueError(f"key {key} is not in a!")
+#     print(a[key]["value"])
+# def test2(key):
+#     match key:
+#         case "lon" | "LON" | "longi":
+#             print(a["lon"]["value"])
+#         case "lat" | "Lat":
+#             print(a["lat"]["value"])
+#         case _:
+#             raise ValueError("Error!")
+#
+# test2('lon')
+# print("+-" * 50)
+# test2("Lat")
 
 # import matplotlib.pyplot as plt
 # import numpy as np
@@ -208,3 +208,21 @@ test2("Lat")
 # plt.colorbar(label="label")
 #
 # plt.show()
+# down_factor = 4
+#
+# a = [i for i in range(1, 99, 1)]
+# b = a[::down_factor]
+#
+# import math
+# import numpy as np
+# b_num = math.ceil(len(a)/down_factor)
+#
+# print(f"a width is {len(a)}")
+# print(f"real b width is {len(b)}, calculated b width is {b_num}")
+#
+# c = np.array(a)
+# d = c.reshape((2,-1))
+
+import numpy as np
+a = np.random.random((100, 100))
+b = a[::2, ::3]
