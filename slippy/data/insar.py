@@ -226,7 +226,11 @@ class InSAR(GeoTrans):
         return los
 
 # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-    def uniform_downsample(self):
+    def dsm_quadtree(self):
+        """Downsampling InSAR images with quadtree method.
+
+        Args:
+        """
         pass
 
 # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
