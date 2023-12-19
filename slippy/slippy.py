@@ -109,7 +109,7 @@ class GeoTrans(object):
 
 # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
     def ll2xy(self, lon: Union[float, np.ndarray], lat: Union[float, np.ndarray]) \
-            -> Tuple[Union[float, np.ndarray],Union[float, np.ndarray]]:
+            -> Tuple[Union[float, np.ndarray], Union[float, np.ndarray]]:
         """Converting longitudes and latitudes to UTM X Y coordinates.
 
         Args:

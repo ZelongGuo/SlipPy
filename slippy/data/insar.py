@@ -47,13 +47,13 @@ class InSAR(GeoTrans):
         # call init function of the parent class to initialize
         super().__init__(name, lon0, lat0, ellps, utmzone)
 
-        print("x-" * 50)
+        print("+-" * 50)
         print(f"Now we initialize the InSAR instance {self.name}...")
 
         # Internal initialization
         self.data = None
 
-# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
     def read_from_gamma(self, para_file: str, phase_file: str, azi_file: str, inc_file: str, satellite: str,
                         downsample: int = 3) -> None:
@@ -150,7 +150,7 @@ class InSAR(GeoTrans):
             azimuth = azimuth.transpose()[::downsample, ::downsample]
             incidence = incidence.transpose()[::downsample, ::downsample]
             # los (unit in m)
-            los = self.__phase2los(phase=phase, satellite=satellite)
+            los = self._phase2los(phase=phase, satellite=satellite)
             # change to real azimuth and incidence with degree
             azimuth = -180 - np.degrees(azimuth)
             incidence = 90 - np.degrees(incidence)
@@ -191,8 +191,8 @@ class InSAR(GeoTrans):
         except IOError:
             print("Error: cannot open the image file, please check the file path or the parameters!")
 
-# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-    def __phase2los(self, phase: Union[float, np.ndarray], satellite: str) -> Union[float, np.ndarray]:
+    # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+    def _phase2los(self, phase: Union[float, np.ndarray], satellite: str) -> Union[float, np.ndarray]:
         """Converting InSAR phase to InSAR line-of-sight (los) disp.
 
         Args:
@@ -219,18 +219,101 @@ class InSAR(GeoTrans):
         # the unit is "m"
         return los
 
-# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-    def dsm_quadtree(self):
-        """Downsampling InSAR images with quadtree method.
+    # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+    def dsm_quadtree(self, image: np.ndarray, mindim: int, maxdim: int, std_threshold: float, fraction: float = 0.3):
+        """Downsampling InSAR images (los deformation) with quadtree method.
 
         Args:
-            -
+            - image:            2-D image matrix which is needed to be downsampled
+            - mindim:           minimum number of the image pixels consist of the image block
+            - maxdim:           maximum number of the image pixels consist of the image block
+            - std_threshold:    the standard deviation above which the image block will be split, unit in m
+            - fraction:         the proportion of non-nan elements required in an image block, default is 0.3
+        Returns:
+            - None.
         """
+        # m, n = np.shape(self.data["los"]["value"])
+        #
+        # split = self.__should_split()
 
         pass
 
+    # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+    def __should_split(self, block: np.ndarray, mindim: int, maxdim: int,
+                       std_threshold: float, fraction: float = 0.3) -> int:
+        """To determine whether the blocks should be split or not. This function is called by dsm_quadtree.
 
-# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+        Args:
+            - block:            the block array
+            - mindim:           minimum number of the image pixels consist of the image block
+            - maxdim:           maximum number of the image pixels consist of the image block
+            - std_threshold:    the standard deviation above which the image block will be split, unit in m
+            - fraction:         the proportion of non-nan elements required in an image block, default is 0.3
+        Return:
+            - split:            0 for false, 1 for true and 2 for ignore
+        """
+        m, n = np.shape(block)
+        nan_num = np.count_nonzero(np.isnan(block))
+        nonnan_num = m * n - nan_num
+
+        # if the block is bigger than maxdim
+        if m > maxdim or n > maxdim:
+            split = 1
+        # if all elements are Nans
+        elif nonnan_num == 0:
+            split = 0
+        # elif nonnan_num / (m * n) < fraction and (m > maxdim or n > maxdim):
+        #     split = 1
+        # #
+        # elif nonnan_num / (m * n) < fraction and (m <= mindim or n <= mindim):
+        #     split = 2
+        else:
+            nonnan = block[~np.isnan(block)]
+            std = np.std(nonnan)
+
+            if std > std_threshold:
+                split = 1
+            else:
+                split = 2
+
+        return split
+
+    # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+    def __recursive_quadtree(self, image: np.ndarray, mindim: int, maxdim: int, std_threshold: float, fraction: float = 0.3):
+        """Do quadtree downsampling recursively.
+        """
+        m, n = np.shape(image)
+        split = self.__should_split(image, mindim, maxdim, std_threshold, fraction)
+
+        if split == 0:
+            pass
+        elif split == 2:
+            # calculate the mean value of the non-nan elements
+            nonnan = image[~np.isnan(image)]
+            mean_value = np.mean(nonnan)
+            # TO DO: Get the coordinated of the central pixel and the coner coordinated, maybe you can set a index or indicator
+        elif split == 1:
+            middle_m, middle_n = m // 2, n //2
+            upper_left = image[:middle_m, :middle_n]
+            upper_right = image[:middle_m, middle_n:]
+            lower_left = image[middle_m:, :middle_n]
+            lower_right= image[middle_m:, middle_n:]
+
+            # recursively downsample
+            upper_left = self.__recursive_quadtree(upper_left, mindim, maxdim, std_threshold, fraction)
+            upper_right = self.__recursive_quadtree(upper_right, mindim, maxdim, std_threshold, fraction)
+            lower_left = self.__recursive_quadtree(lower_left, mindim, maxdim, std_threshold, fraction)
+            lower_right = self.__recursive_quadtree(lower_right, mindim, maxdim, std_threshold, fraction)
+
+            pass
+    # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+    def __get_mean_coord_quadtree(self):
+        """Calculate the mean value and coordinates of the blocks for quadtree downsampling.
+        """
+
+
+
+    # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
     def plot(self, key: str, fig_name: str) -> None:
         """Plot figure to SlipPy folder in current directory.
 
@@ -242,7 +325,6 @@ class InSAR(GeoTrans):
         Return:
             None.
         """
-
         # check and create "SlipPy" folder under working directory
         folder_name = self.check_folder()
 
@@ -269,13 +351,11 @@ class InSAR(GeoTrans):
             case _:
                 raise ValueError(f"Key {key} is not in data!")
 
-
-# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-
+    # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
     def deramp(self, dem_file):
         pass
 
-# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+    # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
 
     def write2file(self, dem_file):
         pass
