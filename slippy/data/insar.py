@@ -52,6 +52,7 @@ class InSAR(GeoTrans):
 
         # Internal initialization
         self.data = None
+        self.data_dsm = None
 
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
@@ -220,11 +221,10 @@ class InSAR(GeoTrans):
         return los
 
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-    def dsm_quadtree(self, image: np.ndarray, mindim: int, maxdim: int, std_threshold: float, fraction: float = 0.3):
+    def dsm_quadtree(self, mindim: int, maxdim: int, std_threshold: float, fraction: float = 0.3):
         """Downsampling InSAR images (los deformation) with quadtree method.
 
         Args:
-            - image:            2-D image matrix which is needed to be downsampled
             - mindim:           minimum number of the image pixels consist of the image block
             - maxdim:           maximum number of the image pixels consist of the image block
             - std_threshold:    the standard deviation above which the image block will be split, unit in m
@@ -232,11 +232,15 @@ class InSAR(GeoTrans):
         Returns:
             - None.
         """
-        # m, n = np.shape(self.data["los"]["value"])
-        #
-        # split = self.__should_split()
+        m, i, j = [], [], []
+        mean_value, middle_i, middle_j = self.__recursive_quadtree(self.data["los"]["value"],
+                                                                   mindim, maxdim, std_threshold, fraction)
+        m.append(mean_value)
+        i.append(middle_i)
+        j.append(middle_j)
 
-        pass
+        self.data_dsm = np.transpose(np.vstack([np.array(i), np.array(j), np.array(mean_value)]))
+
 
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
     def __should_split(self, block: np.ndarray, mindim: int, maxdim: int,
@@ -253,20 +257,17 @@ class InSAR(GeoTrans):
             - split:            0 for false, 1 for true and 2 for ignore
         """
         m, n = np.shape(block)
-        nan_num = np.count_nonzero(np.isnan(block))
-        nonnan_num = m * n - nan_num
+        nonnan_num = np.count_nonzero(~np.isnan(block))
+        nonnan_fraction = nonnan_num / (m * n)
 
+        # if non-nan elements are smaller than required fraction, then ignore
+        if nonnan_fraction <= fraction:
+            split = 2
         # if the block is bigger than maxdim
-        if m > maxdim or n > maxdim:
+        elif m > maxdim or n > maxdim:
             split = 1
-        # if all elements are Nans
-        elif nonnan_num == 0:
+        elif m <= mindim or n <= mindim:
             split = 0
-        # elif nonnan_num / (m * n) < fraction and (m > maxdim or n > maxdim):
-        #     split = 1
-        # #
-        # elif nonnan_num / (m * n) < fraction and (m <= mindim or n <= mindim):
-        #     split = 2
         else:
             nonnan = block[~np.isnan(block)]
             std = np.std(nonnan)
@@ -274,30 +275,36 @@ class InSAR(GeoTrans):
             if std > std_threshold:
                 split = 1
             else:
-                split = 2
+                split = 0
 
-        return split
+        return split, m, n
 
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-    def __recursive_quadtree(self, image: np.ndarray, mindim: int, maxdim: int, std_threshold: float, fraction: float = 0.3):
+    def __recursive_quadtree(self, block: np.ndarray, mindim: int, maxdim: int, std_threshold: float, fraction: float = 0.3):
         """Do quadtree downsampling recursively.
         """
-        m, n = np.shape(image)
-        split = self.__should_split(image, mindim, maxdim, std_threshold, fraction)
+        split, m, n = self.__should_split(block, mindim, maxdim, std_threshold, fraction)
 
-        if split == 0:
-            pass
-        elif split == 2:
+        if split == 2:
+            output[start_row:start_row + m, start_col:start_col + m] = np.zeros((m, m))
+            output[start_row, start_col] = m
+
+            null_id = open(null_filename, 'a')
+            null_id.write(f'{start_row:6d}  {start_col:6d}  {m:6d}\n')
+            null_id.close()
+        elif split == 0:
             # calculate the mean value of the non-nan elements
-            nonnan = image[~np.isnan(image)]
+            nonnan = block[~np.isnan(block)]
             mean_value = np.mean(nonnan)
+            i, j, middle_i, middle_j = self.__get_coord_quadtree(block)
+            return middle_i, middle_j, mean_value
             # TO DO: Get the coordinated of the central pixel and the coner coordinated, maybe you can set a index or indicator
         elif split == 1:
             middle_m, middle_n = m // 2, n //2
-            upper_left = image[:middle_m, :middle_n]
-            upper_right = image[:middle_m, middle_n:]
-            lower_left = image[middle_m:, :middle_n]
-            lower_right= image[middle_m:, middle_n:]
+            upper_left = block[:middle_m, :middle_n]
+            upper_right = block[:middle_m, middle_n:]
+            lower_left = block[middle_m:, :middle_n]
+            lower_right= block[middle_m:, middle_n:]
 
             # recursively downsample
             upper_left = self.__recursive_quadtree(upper_left, mindim, maxdim, std_threshold, fraction)
@@ -305,11 +312,26 @@ class InSAR(GeoTrans):
             lower_left = self.__recursive_quadtree(lower_left, mindim, maxdim, std_threshold, fraction)
             lower_right = self.__recursive_quadtree(lower_right, mindim, maxdim, std_threshold, fraction)
 
-            pass
+        return output
+
+
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-    def __get_mean_coord_quadtree(self):
+    def __get_coord_quadtree(self, block: np.ndarray):
         """Calculate the mean value and coordinates of the blocks for quadtree downsampling.
         """
+        m, n = block.shape
+        data = self.data["los"]["value"]
+        m_limit, n_limite = data.shape[0] - m + 1, data.shape[1] - n + 1
+        for i in range(m_limit):
+            for j in range(n_limite):
+                    if np.array_equal(data[i:i+m, j:j+n], block):
+                        # the first upperleft pixel index (i, j), the central pixel index (middle_i, middle_j)
+                        middle_i = i + m // 2
+                        middle_j = j + n // 2
+                        return i, j, middle_i, middle_j
+
+                        # TODO: return the lonlat coordinates!
+        raise ValueError("We did not find the index of the block in the original data!")
 
 
 

@@ -223,6 +223,280 @@ Created on 21.07.23
 # c = np.array(a)
 # d = c.reshape((2,-1))
 
+# import numpy as np
+# import matplotlib.pyplot as plt
+#
+# class InSARQuadtree:
+#     def __init__(self, data):
+#         self.data = data
+#         self.result = []
+#
+#     def quadtree_downsampling(self, block, mindim, maxdim, std_threshold, fraction=0.3):
+#         split, m, n = self.should_split(block, mindim, maxdim, std_threshold, fraction)
+#
+#         if split == 2:
+#             print("忽略一个块，因为非NaN元素的比例太低。")
+#             return None
+#         elif split == 0:
+#             mean_value, middle_i, middle_j = self.get_block_info(block)
+#             print(f"块大小 ({m}, {n}) 已达到最小限制，降采样块的均值为 {mean_value:.4f}。")
+#             self.result.append((middle_i, middle_j, mean_value))
+#             return block
+#         elif split == 1:
+#             print(f"分裂一个块，块大小为 ({m}, {n})。")
+#             middle_m, middle_n = m // 2, n // 2
+#             upper_left = block[:middle_m, :middle_n]
+#             upper_right = block[:middle_m, middle_n:]
+#             lower_left = block[middle_m:, :middle_n]
+#             lower_right = block[middle_m:, middle_n:]
+#
+#             # 递归调用，将子块的返回值赋给相应的位置
+#             upper_left = self.quadtree_downsampling(upper_left, mindim, maxdim, std_threshold, fraction)
+#             upper_right = self.quadtree_downsampling(upper_right, mindim, maxdim, std_threshold, fraction)
+#             lower_left = self.quadtree_downsampling(lower_left, mindim, maxdim, std_threshold, fraction)
+#             lower_right = self.quadtree_downsampling(lower_right, mindim, maxdim, std_threshold, fraction)
+#
+#             # 将子块的返回值合并成一个新的块
+#             new_block = np.vstack([np.hstack([upper_left, upper_right]),
+#                                    np.hstack([lower_left, lower_right])])
+#             return new_block
+#
+#     def should_split(self, block, mindim, maxdim, std_threshold, fraction=0.3):
+#         m, n = np.shape(block)
+#         nonnan_num = np.count_nonzero(~np.isnan(block))
+#         nonnan_fraction = nonnan_num / (m * n)
+#
+#         if nonnan_fraction <= fraction:
+#             split = 2
+#         elif m > maxdim or n > maxdim:
+#             split = 1
+#         elif m <= mindim or n <= mindim:
+#             split = 0
+#         else:
+#             nonnan = block[~np.isnan(block)]
+#             std = np.std(nonnan)
+#
+#             if std > std_threshold:
+#                 split = 1
+#             else:
+#                 split = 0
+#
+#         return split, m, n
+#
+#     def get_block_info(self, block):
+#         m, n = block.shape
+#         nonnan = block[~np.isnan(block)]
+#         mean_value = np.mean(nonnan)
+#         middle_i, middle_j = self.get_coord_quadtree(block)
+#         return mean_value, middle_i, middle_j
+#
+#     def get_coord_quadtree(self, block):
+#         m, n = block.shape
+#         data = self.data
+#         m_limit, n_limit = data.shape[0] - m + 1, data.shape[1] - n + 1
+#         tolerance = 1e-8
+#
+#         for i in range(m_limit):
+#             for j in range(n_limit):
+#                 if np.allclose(data[i:i+m, j:j+n], block, atol=tolerance):
+#                     middle_i = i + m // 2
+#                     middle_j = j + n // 2
+#                     return middle_i, middle_j
+#         raise ValueError("在原始数据中未找到块的索引！")
+#
+# # 示例使用
+# # 创建一个示例 InSAR 数据（假设为二维数组）
+# x = y = np.arange(-1, 1.0, 0.025)
+# X, Y = np.meshgrid(x, y)
+# Z1 = np.exp(-X**2 - Y**2)
+# Z2 = np.exp(-(X - 1)**2 - (Y - 1)**2)
+# insar_data = (Z1 - Z2) * 2
+# # insar_data = np.random.rand(64, 64)
+#
+# # 创建 InSARQuadtree 实例
+# quadtree = InSARQuadtree(insar_data)
+#
+# # 进行四叉树降采样
+# std = np.std(insar_data)
+# quadtree.quadtree_downsampling(insar_data, mindim=2, maxdim=16, std_threshold=std, fraction=0.2)
+#
+# # # 输出结果
+# # print("降采样后的结果:")
+# # print(quadtree.result)
+#
+# # 可视化原始数据和降采样结果
+# fig, ax = plt.subplots(figsize=(8, 8))
+#
+# # ax.imshow(insar_data, cmap='viridis')
+# # ax.set_title("original")
+#
+# # 绘制降采样结果
+# result_array = np.array(quadtree.result)
+# ax.scatter(result_array[:, 1], result_array[:, 0], c=result_array[:, 2], cmap='viridis', marker='s', s=50)
+#
+# plt.show()
+
+# from pyqtree import Index
+# import matplotlib.pyplot as plt
+# import numpy as np
+#
+# # 生成模拟的 InSAR 数据
+# np.random.seed(42)
+# image_size = 512
+# insar_data = np.random.rand(image_size, image_size)
+#
+# # 定义四叉树的边界框
+# bbox = (0, 0, image_size, image_size)
+#
+# # 创建四叉树索引
+# spatial_index = Index(bbox=bbox)
+#
+# # 将数据插入四叉树
+# for row in range(image_size):
+#     for col in range(image_size):
+#         point_bbox = (row, col, row + 1, col + 1)
+#         spatial_index.insert(item=(row, col), bbox=point_bbox)
+#
+# # 定义降采样的目标分辨率
+# target_resolution = 64
+#
+# # 初始化降采样后的结果数组
+# downsampled_data = np.zeros((image_size // target_resolution, image_size // target_resolution))
+#
+# # 遍历降采样后的网格
+# for row in range(0, image_size, target_resolution):
+#     for col in range(0, image_size, target_resolution):
+#         # 查询四叉树，获取与当前网格相交的原始数据点
+#         intersected_points = spatial_index.intersect((row, col, row + target_resolution, col + target_resolution))
+#
+#         # 计算当前网格的平均值，并填充降采样后的数组
+#         if intersected_points:
+#             values = [insar_data[row, col] for (row, col) in intersected_points]
+#             average_value = np.mean(values)
+#             downsampled_data[row // target_resolution, col // target_resolution] = average_value
+#
+# # 显示原始数据和降采样后的结果
+# plt.figure(figsize=(10, 5))
+#
+# plt.subplot(1, 2, 1)
+# plt.imshow(insar_data, cmap='viridis')
+# plt.title('Original InSAR Data')
+#
+# plt.subplot(1, 2, 2)
+# plt.imshow(downsampled_data, cmap='viridis')
+# plt.title('Downsampled InSAR Data')
+#
+# plt.show()
+
+# import numpy as np
+# import matplotlib.pyplot as plt
+#
+# def quadtree_downsample(matrix, threshold=0.5):
+#     """
+#     对一个128x128的二维矩阵进行四叉树降采样。
+#
+#     参数：
+#     - matrix: 输入的128x128矩阵
+#     - threshold: 降采样的阈值，小于该值的单元将被合并
+#
+#     返回：
+#     - 降采样后的均值矩阵
+#     - 降采样后的中心点坐标
+#     """
+#
+#     def recursive_downsample(submatrix, row_start, col_start, size):
+#         # 检查是否满足降采样条件
+#         if np.all(submatrix <= threshold):
+#             # 降采样：计算均值和中心点坐标
+#             avg_value = np.mean(submatrix)
+#             center_row = row_start + size // 2
+#             center_col = col_start + size // 2
+#             return [(avg_value, (center_row, center_col))]
+#
+#         # 不满足条件，继续分割为四个子矩阵
+#         size //= 2
+#         half_size = size // 2
+#         quadrants = [
+#             (row_start, col_start, size),
+#             (row_start, col_start + half_size, size),
+#             (row_start + half_size, col_start, size),
+#             (row_start + half_size, col_start + half_size, size)
+#         ]
+#
+#         result = []
+#         for quadrant in quadrants:
+#             r_start, c_start, quad_size = quadrant
+#             submatrix = matrix[r_start:r_start + quad_size, c_start:c_start + quad_size]
+#             result.extend(recursive_downsample(submatrix, r_start, c_start, quad_size))
+#
+#         return result
+#
+#     # 开始递归降采样
+#     result = recursive_downsample(matrix, 0, 0, len(matrix))
+#     avg_matrix = np.zeros_like(matrix, dtype=float)
+#
+#     # 更新降采样后的均值矩阵
+#     for avg_value, (center_row, center_col) in result:
+#         avg_matrix[center_row, center_col] = avg_value
+#
+#     return avg_matrix, result
+#
+# # 示例用法
+# # 生成一个随机的128x128矩阵作为形变场数据
+# delta = 0.025
+# x = y = np.arange(-3.0, 3.0, delta)
+# X, Y = np.meshgrid(x, y)
+# Z1 = np.exp(-X**2 - Y**2)
+# Z2 = np.exp(-(X - 1)**2 - (Y - 1)**2)
+# Z = (Z1 - Z2) * 2
+# random_matrix = Z
+#
+# # 进行四叉树降采样
+# downsampled_matrix, cell_info = quadtree_downsample(random_matrix, np.std(random_matrix)*0.005)
+#
+# # # 打印结果
+# # print("降采样后的均值矩阵:")
+# # print(downsampled_matrix)
+# # print("\n降采样后的中心点坐标和均值:")
+# # for avg_value, (center_row, center_col) in cell_info:
+# #     print(f"中心点坐标: ({center_row}, {center_col}), 均值: {avg_value}")
+#
+# # 绘制原始图像
+# plt.figure(figsize=(10, 5))
+# plt.subplot(1, 2, 1)
+# plt.title('原始图像')
+# plt.imshow(random_matrix, cmap='viridis', origin='upper')
+#
+# # 绘制降采样后的结果
+# plt.subplot(1, 2, 2)
+# plt.title('降采样后的结果')
+# plt.imshow(downsampled_matrix, cmap='viridis', origin='upper')
+# plt.colorbar()
+#
+#
+# plt.show()
+
+import matplotlib.colorbar as cbar
+from matplotlib import pyplot as plt
 import numpy as np
-a = np.random.random((100, 100))
-b = a[::2, ::3]
+
+N = 2
+xs = np.random.randint(0, 100, N)
+ys = np.random.randint(0, 100, N)
+ws = np.random.randint(10, 20, N)
+hs = np.random.randint(10, 20, N)
+vs = np.random.randn(N)
+normal = plt.Normalize(vs.min(), vs.max())
+colors = plt.cm.jet(normal(vs))
+
+ax = plt.subplot(111)
+for x,y,w,h,c in zip(xs,ys,ws,hs,colors):
+    rect = plt.Rectangle((x,y),w,h,color=c)
+    ax.add_patch(rect)
+
+cax, _ = cbar.make_axes(ax)
+cb2 = cbar.ColorbarBase(cax, cmap=plt.cm.jet,norm=normal)
+
+ax.set_xlim(0,120)
+ax.set_ylim(0,120)
+plt.show()
