@@ -6,13 +6,16 @@ import random
 import math
 import numpy as np
 
+__author__ = "Zelong Guo"
+__institution__ = "GFZ Potsdam Germany"
 
 class Node(object):
-    def __init__(self, x0, y0, w, h):
+    def __init__(self, x0, y0, width, height):
         self.x0 = x0
         self.y0 = y0
-        self.width = w
-        self.height = h
+        self.width = width
+        self.height = height
+
         self.children = []
 
     def get_width(self):
@@ -21,34 +24,40 @@ class Node(object):
     def get_height(self):
         return self.height
     
-    def get_points(self, img):
-        return img[self.x0:self.x0 + self.get_width(), self.y0:self.y0+self.get_height()]
+    def get_points(self, image):
+        return image[self.x0:self.x0 + self.get_width(), self.y0:self.y0 + self.get_height()]
     
-    def get_error(self, img):
-        pixels = self.get_points(img)
+    def get_error(self, image):
+        pixels = self.get_points(image)
         return np.std(pixels)
 
 
-
 class QTree():
-    def __init__(self, stdThreshold, minPixelSize, img):
-        self.threshold = stdThreshold
-        self.min_size = minPixelSize
-        self.minPixelSize = minPixelSize
-        self.img = img
-        self.root = Node(0, 0, img.shape[0], img.shape[1])
+    def __init__(self, image, mindim, maxdim, std_threshold):
+        self.threshold = std_threshold
+        self.maxPixelSize = maxdim
+        self.minPixelSize = mindim
+        self.__replace_nan_to_zero(image)
+
+        self.root = Node(0, 0, image.shape[0], image.shape[1])
         self.qtimg = None
 
-    
+
+    def __replace_nan_to_zero(self, image):
+        self.image = np.where(np.isnan(image), 0, image)
+
     def subdivide(self):
-        recursive_subdivide(self.root, self.threshold, self.minPixelSize, self.img)
+        # recursive_subdivide(self.root, self.threshold, self.minPixelSize, self.img)
+        recursive_subdivide(node=self.root, image=self.image, mindim=self.minPixelSize,
+                            std_threshold=self.threshold)
 
     def qtresults(self):
         c = find_children(self.root)
         results = []
         for n in c:
-            pixels = n.get_points(self.img)
-            mean_value = np.mean(pixels)
+            pixels = n.get_points(self.image)
+            nonnan = pixels[~np.isnan(pixels)]
+            mean_value = np.mean(nonnan)
             new_x = (n.x0 + n.x0 + n.width) // 2
             new_y = (n.y0 + n.y0 + n.height) // 2
             results.append([new_x, new_y, mean_value])
@@ -58,7 +67,7 @@ class QTree():
         plt.figure(figsize=(15, 5))
         plt.subplot(1, 3, 1)
         plt.title("Original Data")
-        plt.imshow(self.img, cmap="rainbow", origin="lower")
+        plt.imshow(self.image, cmap="rainbow", origin="lower")
         plt.colorbar()
 
         plt.subplot(1, 3, 2)
@@ -68,20 +77,22 @@ class QTree():
 
 
         import matplotlib.colorbar as cbar
-        normal = plt.Normalize(self.img.min(), self.img.max())
+        normal = plt.Normalize(self.image[~np.isnan(self.image)].min(), self.image[~np.isnan(self.image)].max())
         # color = plt.cm.rainbow(normal(self.img.reshape(-1, 1)))
         ax = plt.subplot(1, 3, 3)
         c = find_children(self.root)
+        print(f"Number of segments: {len(c)}")
         for n in c:
-            mean_value = np.mean(n.get_points(self.img))
+            nonnan = n.get_points(self.image)[~np.isnan(n.get_points(self.image))]
+            mean_value = np.mean(nonnan)
             color = plt.cm.rainbow(normal(mean_value))
             rect = patches.Rectangle((n.x0, n.y0), n.width, n.height, facecolor=color,
                                      edgecolor="black", fill=True)
             ax.add_patch(rect)
         cax, _ = cbar.make_axes(ax)
         cb2 = cbar.ColorbarBase(cax, cmap=plt.cm.rainbow, norm=normal)
-        ax.set_xlim(0, self.img.shape[1])
-        ax.set_ylim(0, self.img.shape[0])
+        ax.set_xlim(0, self.image.shape[1])
+        ax.set_ylim(0, self.image.shape[0])
         plt.show()
         plt.close()
 
@@ -117,44 +128,43 @@ class QTree():
 
 
 
-def recursive_subdivide(node, k, minPixelSize, img):
+# def recursive_subdivide(node, k, minPixelSize, img):
+#     if node.get_error(img) <= k:
+#         return
+#     middle_w1, middle_h1 = math.floor(node.width / 2), math.floor(node.height / 2)
+#     middle_w2, middle_h2 = math.ceil(node.width / 2), math.ceil(node.height / 2)
+#
+#     if middle_w1 <= minPixelSize or middle_h1 <= minPixelSize:
+#         return
+#
+#     x1 = Node(node.x0, node.y0, middle_w1, middle_h1)  # top left
+#     recursive_subdivide(x1, k, minPixelSize, img)
+#     x2 = Node(node.x0 + middle_w1, node.y0, middle_w2, middle_h1)  # topo right
+#     recursive_subdivide(x2, k, minPixelSize, img)
+#     x3 = Node(node.x0, node.y0 + middle_h1, middle_w1, middle_h2)  # btm left
+#     recursive_subdivide(x3, k, minPixelSize, img)
+#     x4 = Node(node.x0 + middle_w1, node.y0 + middle_h1, middle_w2, middle_h2) # btm right
+#     recursive_subdivide(x4, k, minPixelSize, img)
+#     node.children = [x1, x2, x3, x4]
 
-    # if node.get_error(img) <= k:
-    #     return
-    # w_1 = int(math.floor(node.width/2))
-    # w_2 = int(math.ceil(node.width/2))
-    # h_1 = int(math.floor(node.height/2))
-    # h_2 = int(math.ceil(node.height/2))
-    #
-    # if w_1 <= minPixelSize or h_1 <= minPixelSize:
-    #     return
-    #
-    # x1 = Node(node.x0, node.y0, w_1, h_1) # top left
-    # recursive_subdivide(x1, k, minPixelSize, img)
-    # x2 = Node(node.x0, node.y0 + h_1, w_1, h_2) # btm left
-    # recursive_subdivide(x2, k, minPixelSize, img)
-    # x3 = Node(node.x0 + w_1, node.y0, w_2, h_1)# top right
-    # recursive_subdivide(x3, k, minPixelSize, img)
-    # x4 = Node(node.x0 + w_1, node.y0 + h_1, w_2, h_2) # btm right
-    # recursive_subdivide(x4, k, minPixelSize, img)
-    # node.children = [x1, x2, x3, x4]
+def recursive_subdivide(node, image, mindim, std_threshold):
 
-    if node.get_error(img) <= k:
+    if node.get_error(image) <= std_threshold:
         return
     middle_w1, middle_h1 = math.floor(node.width / 2), math.floor(node.height / 2)
     middle_w2, middle_h2 = math.ceil(node.width / 2), math.ceil(node.height / 2)
 
-    if middle_w1 <= minPixelSize or middle_h1 <= minPixelSize:
+    if middle_w1 <= mindim or middle_h1 <= mindim:
         return
 
     x1 = Node(node.x0, node.y0, middle_w1, middle_h1)  # top left
-    recursive_subdivide(x1, k, minPixelSize, img)
+    recursive_subdivide(node=x1, mindim=mindim, std_threshold=std_threshold, image=image)
     x2 = Node(node.x0 + middle_w1, node.y0, middle_w2, middle_h1)  # topo right
-    recursive_subdivide(x2, k, minPixelSize, img)
+    recursive_subdivide(x2, mindim=mindim, std_threshold=std_threshold, image=image)
     x3 = Node(node.x0, node.y0 + middle_h1, middle_w1, middle_h2)  # btm left
-    recursive_subdivide(x3, k, minPixelSize, img)
+    recursive_subdivide(x3, mindim=mindim, std_threshold=std_threshold, image=image)
     x4 = Node(node.x0 + middle_w1, node.y0 + middle_h1, middle_w2, middle_h2) # btm right
-    recursive_subdivide(x4, k, minPixelSize, img)
+    recursive_subdivide(x4, mindim=mindim, std_threshold=std_threshold, image=image)
     node.children = [x1, x2, x3, x4]
    
 
@@ -180,8 +190,14 @@ if __name__ == '__main__':
     Z2 = np.exp(-(X - 1)**2 - (Y - 1)**2)
     Z = (Z1 - Z2) * 20
     img = Z
+    # set up nan
+    img[:, 0:120] = 0
+    img[:, -1] = 0
+    img[0, :] = 0
+    img[-1, :] = 0
 
-    qtTemp = QTree(np.std(img)-3, 4, img)  #contrast threshold, min cell size, img
+
+    qtTemp = QTree(img, 16, 64, np.std(img)-2)  #contrast threshold, min cell size, img
     qtTemp.subdivide() # recursively generates quad tree
     # qtTemp.graph_tree()
     qtTemp.qtresults()

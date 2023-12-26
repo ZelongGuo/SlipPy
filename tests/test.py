@@ -476,27 +476,34 @@ Created on 21.07.23
 #
 # plt.show()
 
-import matplotlib.colorbar as cbar
-from matplotlib import pyplot as plt
+# import matplotlib.colorbar as cbar
+# from matplotlib import pyplot as plt
+# import numpy as np
+#
+# N = 2
+# xs = np.random.randint(0, 100, N)
+# ys = np.random.randint(0, 100, N)
+# ws = np.random.randint(10, 20, N)
+# hs = np.random.randint(10, 20, N)
+# vs = np.random.randn(N)
+# normal = plt.Normalize(vs.min(), vs.max())
+# colors = plt.cm.jet(normal(vs))
+#
+# ax = plt.subplot(111)
+# for x,y,w,h,c in zip(xs,ys,ws,hs,colors):
+#     rect = plt.Rectangle((x,y),w,h,color=c)
+#     ax.add_patch(rect)
+#
+# cax, _ = cbar.make_axes(ax)
+# cb2 = cbar.ColorbarBase(cax, cmap=plt.cm.jet,norm=normal)
+#
+# ax.set_xlim(0,120)
+# ax.set_ylim(0,120)
+# plt.show()
+
 import numpy as np
 
-N = 2
-xs = np.random.randint(0, 100, N)
-ys = np.random.randint(0, 100, N)
-ws = np.random.randint(10, 20, N)
-hs = np.random.randint(10, 20, N)
-vs = np.random.randn(N)
-normal = plt.Normalize(vs.min(), vs.max())
-colors = plt.cm.jet(normal(vs))
+a = np.random.rand(5, 5)
+a[:, 1] = np.nan
 
-ax = plt.subplot(111)
-for x,y,w,h,c in zip(xs,ys,ws,hs,colors):
-    rect = plt.Rectangle((x,y),w,h,color=c)
-    ax.add_patch(rect)
-
-cax, _ = cbar.make_axes(ax)
-cb2 = cbar.ColorbarBase(cax, cmap=plt.cm.jet,norm=normal)
-
-ax.set_xlim(0,120)
-ax.set_ylim(0,120)
-plt.show()
+a = np.where(np.isnan(a), 0, a)
