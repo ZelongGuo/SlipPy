@@ -1,8 +1,16 @@
-# matplotlib for displaying the images
+"""
+Quadtree down-sampling for InSAR images.
+
+Author: Zelong Guo, @ GFZ, Potsdam
+Email: zelong.guo@outlook.com
+Create on 27, Dec. 2023
+
+"""
+
 from matplotlib import pyplot as plt
 import matplotlib.patches as patches
+import matplotlib.colorbar as cbar
 
-import random
 import math
 import numpy as np
 
@@ -10,6 +18,8 @@ __author__ = "Zelong Guo"
 __institution__ = "GFZ Potsdam Germany"
 
 class Node(object):
+    """Node class to generate a node (parent node or child node) which start
+    with pixel coordinate/index (x0, y0) with certain width (width) and height (height)."""
     def __init__(self, x0, y0, width, height):
         self.x0 = x0
         self.y0 = y0
@@ -27,129 +37,123 @@ class Node(object):
     def get_points(self, image):
         return image[self.x0:self.x0 + self.get_width(), self.y0:self.y0 + self.get_height()]
     
-    def get_error(self, image):
+    def get_std(self, image):
         pixels = self.get_points(image)
-        return np.std(pixels)
+        # get the standard deviation of non-zero elements of the image
+        nonzero_count = np.count_nonzero(pixels)
+        if nonzero_count == 0:
+            std = 0
+        else:
+            pixels = pixels[pixels != 0]
+            std = np.std(pixels)
+        return std
 
 
-class QTree():
-    def __init__(self, image, mindim, maxdim, std_threshold):
-        self.threshold = std_threshold
-        self.maxPixelSize = maxdim
-        self.minPixelSize = mindim
-        self.__replace_nan_to_zero(image)
+class QTree(object):
+    """Quadtree class.
+
+    Args:
+        - lon:      2-D mesh of longitudes
+        - lat:      2-D mesh of latitudes
+        - image:    2-D matrix of an image
+
+    Return:
+        - None.
+    """
+    def __init__(self, lon, lat, image):
+        self.lon, self.lat = lon, lat
+        self._replace_nan_to_zero(image)
 
         self.root = Node(0, 0, image.shape[0], image.shape[1])
-        self.qtimg = None
+        self.qtscatter = None
+        self.qtrect = None
 
-
-    def __replace_nan_to_zero(self, image):
+    def _replace_nan_to_zero(self, image):
         self.image = np.where(np.isnan(image), 0, image)
 
-    def subdivide(self):
-        # recursive_subdivide(self.root, self.threshold, self.minPixelSize, self.img)
-        recursive_subdivide(node=self.root, image=self.image, mindim=self.minPixelSize,
-                            std_threshold=self.threshold)
 
-    def qtresults(self):
+    def subdivide(self, mindim, std_threshold):
+        """Do quadtree to get the quadtree down-sampling results.
+
+        Args:
+            - mindim:            minimum pixels number as the minimum quadtree box size
+            - maxdim:            maximum pixels numbers as the maximum quadtree box size
+            - std_threshold:     threshold of the standard deviation
+
+        Return:
+            - None.
+        """
+        recursive_subdivide(node=self.root, image=self.image, mindim=mindim, std_threshold=std_threshold)
+
+    def qtresults(self, nonzero_fraction=0.3):
+        """If the non-zero fraction in a block are smaller than nonzero_fraction,
+        then we will ignore it by assigning it with nan.
+        """
         c = find_children(self.root)
-        results = []
+        xyz = []
+        xywhz = []
         for n in c:
             pixels = n.get_points(self.image)
-            nonnan = pixels[~np.isnan(pixels)]
-            mean_value = np.mean(nonnan)
-            new_x = (n.x0 + n.x0 + n.width) // 2
-            new_y = (n.y0 + n.y0 + n.height) // 2
-            results.append([new_x, new_y, mean_value])
-        self.qtimg = np.array(results)
+            x = n.get_points(self.lon)
+            y = n.get_points(self.lat)
+            new_x, new_y = x.mean(), y.mean()
+            nonzero_count = np.count_nonzero(pixels)
+            if nonzero_count / (n.width * n.height) > nonzero_fraction:
+                nonzero = pixels[pixels != 0]
+                mean_value = np.mean(nonzero)
+                xyz.append([new_x, new_y, mean_value])
+                xywhz.append([x[0, 0], y[0, 0], n.width, n.height, mean_value])
+
+        self.qtscatter = np.array(xyz)
+        self.qtrect = np.array(xywhz)
 
     def show_qtresults(self):
         plt.figure(figsize=(15, 5))
         plt.subplot(1, 3, 1)
         plt.title("Original Data")
-        plt.imshow(self.image, cmap="rainbow", origin="lower")
+        img = np.where(self.image == 0, np.nan, self.image)
+        plt.imshow(img, cmap="rainbow", extent=[np.min(self.lon), np.max(self.lon), np.min(self.lat),
+                                                       np.max(self.lat)], origin="lower")
         plt.colorbar()
 
         plt.subplot(1, 3, 2)
         plt.title("QuadTree")
-        plt.scatter(self.qtimg[:,0], self.qtimg[:,1], c=self.qtimg[:, 2], cmap="rainbow")
+        plt.scatter(self.qtscatter[:, 0], self.qtscatter[:, 1], c=self.qtscatter[:, 2], cmap="rainbow")
+        plt.xlim([np.min(self.lon), np.max(self.lon)])
+        plt.ylim([np.min(self.lat), np.max(self.lat)])
         plt.colorbar()
 
-
-        import matplotlib.colorbar as cbar
-        normal = plt.Normalize(self.image[~np.isnan(self.image)].min(), self.image[~np.isnan(self.image)].max())
-        # color = plt.cm.rainbow(normal(self.img.reshape(-1, 1)))
         ax = plt.subplot(1, 3, 3)
-        c = find_children(self.root)
-        print(f"Number of segments: {len(c)}")
-        for n in c:
-            nonnan = n.get_points(self.image)[~np.isnan(n.get_points(self.image))]
-            mean_value = np.mean(nonnan)
-            color = plt.cm.rainbow(normal(mean_value))
-            rect = patches.Rectangle((n.x0, n.y0), n.width, n.height, facecolor=color,
-                                     edgecolor="black", fill=True)
+        normal = plt.Normalize(self.image.min(), self.image.max())
+        print(f"The number of segments: {self.qtrect.shape[0]}")
+        for i in range(self.qtrect.shape[0]):
+            color = plt.cm.rainbow(normal(self.qtrect[i, 4]))
+            rect = patches.Rectangle((self.qtrect[i, 0], self.qtrect[i, 1]), self.qtrect[i, 2],
+                                     self.qtrect[i, 3], facecolor=color, edgecolor="black", fill=True)
             ax.add_patch(rect)
         cax, _ = cbar.make_axes(ax)
         cb2 = cbar.ColorbarBase(cax, cmap=plt.cm.rainbow, norm=normal)
-        ax.set_xlim(0, self.image.shape[1])
-        ax.set_ylim(0, self.image.shape[0])
+        ax.set_xlim(self.lon.min(), self.lon.max())
+        ax.set_ylim(self.lat.min(), self.lat.max())
         plt.show()
         plt.close()
 
 
-    
-    # def graph_tree(self):
-    #     fig = plt.figure(figsize=(10, 5))
-    #     plt.subplot(1, 2, 1)
-    #     plt.title('orignal')
-    #     plt.imshow(img, cmap='rainbow')
-    #     plt.colorbar()
-    #
-    #     plt.subplot(1, 2, 2)
-    #     plt.title("Quadtree")
-    #     c = find_children(self.root)
-    #     print(f"Number of segments: {len(c)}")
-    #     for n in c:
-    #         pixels = n.get_points(self.img)
-    #         mean_value = np.mean(pixels)
-    #         rect = patches.Rectangle((n.y0, n.x0), n.height, n.width, edgecolor="black", fill=True,
-    #                                                     facecolor=plt.cm.rainbow(mean_value))
-    #         plt.gcf().gca().add_patch(rect)
-    #     plt.gcf().gca().set_xlim(0, img.shape[1])
-    #     plt.gcf().gca().set_ylim(img.shape[0], 0)
-    #     # Add colorbar to the second subplot
-    #     cax = plt.axes([0.92, 0.1, 0.02, 0.8])  # [left, bottom, width, height]
-    #     cb = plt.colorbar(cax=cax)
-    #     cb.set_label('Mean Value')  # Set colorbar label
-    #
-    #     # plt.axis('equal')
-    #     plt.show()
-    #     return
-
-
-
-# def recursive_subdivide(node, k, minPixelSize, img):
-#     if node.get_error(img) <= k:
-#         return
-#     middle_w1, middle_h1 = math.floor(node.width / 2), math.floor(node.height / 2)
-#     middle_w2, middle_h2 = math.ceil(node.width / 2), math.ceil(node.height / 2)
-#
-#     if middle_w1 <= minPixelSize or middle_h1 <= minPixelSize:
-#         return
-#
-#     x1 = Node(node.x0, node.y0, middle_w1, middle_h1)  # top left
-#     recursive_subdivide(x1, k, minPixelSize, img)
-#     x2 = Node(node.x0 + middle_w1, node.y0, middle_w2, middle_h1)  # topo right
-#     recursive_subdivide(x2, k, minPixelSize, img)
-#     x3 = Node(node.x0, node.y0 + middle_h1, middle_w1, middle_h2)  # btm left
-#     recursive_subdivide(x3, k, minPixelSize, img)
-#     x4 = Node(node.x0 + middle_w1, node.y0 + middle_h1, middle_w2, middle_h2) # btm right
-#     recursive_subdivide(x4, k, minPixelSize, img)
-#     node.children = [x1, x2, x3, x4]
+def _should_split(node, image, mindim, maxdim, ste_threshold):
+    if node.width > maxdim or node.height > maxdim:
+        split = 1
+    elif node.width <= mindim or node.height <= mindim:
+        split = 0
+    else:
+        if node.get_std(image) > ste_threshold:
+            split = 1
+        else:
+            split = 0
+    return split
 
 def recursive_subdivide(node, image, mindim, std_threshold):
 
-    if node.get_error(image) <= std_threshold:
+    if node.get_std(image) <= std_threshold:
         return
     middle_w1, middle_h1 = math.floor(node.width / 2), math.floor(node.height / 2)
     middle_w2, middle_h2 = math.ceil(node.width / 2), math.ceil(node.height / 2)
@@ -158,7 +162,7 @@ def recursive_subdivide(node, image, mindim, std_threshold):
         return
 
     x1 = Node(node.x0, node.y0, middle_w1, middle_h1)  # top left
-    recursive_subdivide(node=x1, mindim=mindim, std_threshold=std_threshold, image=image)
+    recursive_subdivide(x1, mindim=mindim, std_threshold=std_threshold, image=image)
     x2 = Node(node.x0 + middle_w1, node.y0, middle_w2, middle_h1)  # topo right
     recursive_subdivide(x2, mindim=mindim, std_threshold=std_threshold, image=image)
     x3 = Node(node.x0, node.y0 + middle_h1, middle_w1, middle_h2)  # btm left
@@ -176,6 +180,9 @@ def find_children(node):
        for child in node.children:
            children += (find_children(child))
    return children
+
+
+# TODO: write to files as scatter and rectangles patches which are GMT needed.
 
 
 
@@ -197,10 +204,9 @@ if __name__ == '__main__':
     img[-1, :] = 0
 
 
-    qtTemp = QTree(img, 16, 64, np.std(img)-2)  #contrast threshold, min cell size, img
-    qtTemp.subdivide() # recursively generates quad tree
-    # qtTemp.graph_tree()
-    qtTemp.qtresults()
+    qtTemp = QTree(X, Y, img)  #contrast threshold, min cell size, img
+    qtTemp.subdivide(16, np.std(img)-2) # recursively generates quad tree
+    qtTemp.qtresults(0.3)
     qtTemp.show_qtresults()
 
 

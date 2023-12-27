@@ -503,7 +503,10 @@ Created on 21.07.23
 
 import numpy as np
 
-a = np.random.rand(5, 5)
-a[:, 1] = np.nan
+a = np.random.rand(5, 4)
+a[1:3, -1] = 0
+for i in range(a.shape[0]):
 
-a = np.where(np.isnan(a), 0, a)
+    print(f"m: {a[i, 0]}, n: {a[i, 1]}, p: {a[i,2]}, q: {a[i, 3]}")
+
+print("all done.")
