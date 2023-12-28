@@ -501,12 +501,36 @@ Created on 21.07.23
 # ax.set_ylim(0,120)
 # plt.show()
 
+# import numpy as np
+#
+# a = np.random.rand(5, 4)
+# a[1:3, -1] = 0
+# for i in range(a.shape[0]):
+#
+#     print(f"m: {a[i, 0]}, n: {a[i, 1]}, p: {a[i,2]}, q: {a[i, 3]}")
+#
+# print("all done.")
+
+import sys
+sys.path.append("../slippy/utils/")
+
+from quadtree import QTree
 import numpy as np
 
-a = np.random.rand(5, 4)
-a[1:3, -1] = 0
-for i in range(a.shape[0]):
+delta = 0.025
+x = y = np.arange(-3.0, 5.0, delta)
+X, Y = np.meshgrid(x, y)
+Z1 = np.exp(-X ** 2 - Y ** 2)
+Z2 = np.exp(-(X - 1) ** 2 - (Y - 1) ** 2)
+Z = (Z1 - Z2) * 20
+img = Z
+# set up nan
+img[:, 0:120] = 0
+img[:, -1] = 0
+img[0, :] = 0
+img[-1, :] = 0
 
-    print(f"m: {a[i, 0]}, n: {a[i, 1]}, p: {a[i,2]}, q: {a[i, 3]}")
-
-print("all done.")
+qtTemp = QTree(X, Y, img)  # contrast threshold, min cell size, img
+qtTemp.subdivide(16, 64, np.std(img) - 2)  # recursively generates quad tree
+qtTemp.qtresults(0.3)
+qtTemp.show_qtresults()

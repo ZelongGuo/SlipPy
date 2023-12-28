@@ -25,6 +25,7 @@ import matplotlib.pyplot as plt
 
 # SlipPy libs
 from ..slippy import GeoTrans
+from ..utils.quadtree import QTree
 
 
 # Insar Class
@@ -232,109 +233,16 @@ class InSAR(GeoTrans):
         Returns:
             - None.
         """
-        m, i, j = [], [], []
-        mean_value, middle_i, middle_j = self.__recursive_quadtree(self.data["los"]["value"],
-                                                                   mindim, maxdim, std_threshold, fraction)
-        m.append(mean_value)
-        i.append(middle_i)
-        j.append(middle_j)
-
-        self.data_dsm = np.transpose(np.vstack([np.array(i), np.array(j), np.array(mean_value)]))
+        qttemp = QTree(self.data["x"]["value"], self.data["y"]["value"], self.data["los"]["value"])
+        qttemp.subdivide(mindim, maxdim, std_threshold)
+        qttemp.qtresults(nonzero_fraction=fraction)
+        qttemp.show_qtresults("los", self.data["los"]["unit"])
 
 
-    # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-    def __should_split(self, block: np.ndarray, mindim: int, maxdim: int,
-                       std_threshold: float, fraction: float = 0.3) -> int:
-        """To determine whether the blocks should be split or not. This function is called by dsm_quadtree.
-
-        Args:
-            - block:            the block array
-            - mindim:           minimum number of the image pixels consist of the image block
-            - maxdim:           maximum number of the image pixels consist of the image block
-            - std_threshold:    the standard deviation above which the image block will be split, unit in m
-            - fraction:         the proportion of non-nan elements required in an image block, default is 0.3
-        Return:
-            - split:            0 for false, 1 for true and 2 for ignore
-        """
-        m, n = np.shape(block)
-        nonnan_num = np.count_nonzero(~np.isnan(block))
-        nonnan_fraction = nonnan_num / (m * n)
-
-        # if non-nan elements are smaller than required fraction, then ignore
-        if nonnan_fraction <= fraction:
-            split = 2
-        # if the block is bigger than maxdim
-        elif m > maxdim or n > maxdim:
-            split = 1
-        elif m <= mindim or n <= mindim:
-            split = 0
-        else:
-            nonnan = block[~np.isnan(block)]
-            std = np.std(nonnan)
-
-            if std > std_threshold:
-                split = 1
-            else:
-                split = 0
-
-        return split, m, n
-
-    # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-    def __recursive_quadtree(self, block: np.ndarray, mindim: int, maxdim: int, std_threshold: float, fraction: float = 0.3):
-        """Do quadtree downsampling recursively.
-        """
-        split, m, n = self.__should_split(block, mindim, maxdim, std_threshold, fraction)
-
-        if split == 2:
-            output[start_row:start_row + m, start_col:start_col + m] = np.zeros((m, m))
-            output[start_row, start_col] = m
-
-            null_id = open(null_filename, 'a')
-            null_id.write(f'{start_row:6d}  {start_col:6d}  {m:6d}\n')
-            null_id.close()
-        elif split == 0:
-            # calculate the mean value of the non-nan elements
-            nonnan = block[~np.isnan(block)]
-            mean_value = np.mean(nonnan)
-            i, j, middle_i, middle_j = self.__get_coord_quadtree(block)
-            return middle_i, middle_j, mean_value
-            # TO DO: Get the coordinated of the central pixel and the coner coordinated, maybe you can set a index or indicator
-        elif split == 1:
-            middle_m, middle_n = m // 2, n //2
-            upper_left = block[:middle_m, :middle_n]
-            upper_right = block[:middle_m, middle_n:]
-            lower_left = block[middle_m:, :middle_n]
-            lower_right= block[middle_m:, middle_n:]
-
-            # recursively downsample
-            upper_left = self.__recursive_quadtree(upper_left, mindim, maxdim, std_threshold, fraction)
-            upper_right = self.__recursive_quadtree(upper_right, mindim, maxdim, std_threshold, fraction)
-            lower_left = self.__recursive_quadtree(lower_left, mindim, maxdim, std_threshold, fraction)
-            lower_right = self.__recursive_quadtree(lower_right, mindim, maxdim, std_threshold, fraction)
-
-        return output
+        # self.data_dsm = np.transpose(np.vstack([np.array(i), np.array(j), np.array(mean_value)]))
 
 
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-    def __get_coord_quadtree(self, block: np.ndarray):
-        """Calculate the mean value and coordinates of the blocks for quadtree downsampling.
-        """
-        m, n = block.shape
-        data = self.data["los"]["value"]
-        m_limit, n_limite = data.shape[0] - m + 1, data.shape[1] - n + 1
-        for i in range(m_limit):
-            for j in range(n_limite):
-                    if np.array_equal(data[i:i+m, j:j+n], block):
-                        # the first upperleft pixel index (i, j), the central pixel index (middle_i, middle_j)
-                        middle_i = i + m // 2
-                        middle_j = j + n // 2
-                        return i, j, middle_i, middle_j
-
-                        # TODO: return the lonlat coordinates!
-        raise ValueError("We did not find the index of the block in the original data!")
-
-
-
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
     def plot(self, key: str, fig_name: str) -> None:
         """Plot figure to SlipPy folder in current directory.
@@ -354,15 +262,27 @@ class InSAR(GeoTrans):
         match key:
             case "phase" | "los" | "azi" | "inc":
                 if key == "phase":
-                    wrapped_phase = np.angle(np.exp(1j * self.data[key]["value"].reshape(-1, 1)))
-                    plt.scatter(self.data["lon"]["value"].reshape(-1, 1), self.data["lat"]["value"].reshape(-1, 1),
-                                c=wrapped_phase, vmin=-np.pi, vmax=np.pi, cmap="rainbow")
+                    # wrapped_phase = np.angle(np.exp(1j * self.data[key]["value"].reshape(-1, 1)))
+                    # plt.scatter(self.data["lon"]["value"].reshape(-1, 1), self.data["lat"]["value"].reshape(-1, 1),
+                    #             c=wrapped_phase, vmin=-np.pi, vmax=np.pi, cmap="rainbow")
+                    wrapped_phase = np.angle(np.exp(1j * self.data[key]["value"]))
+                    plt.imshow(wrapped_phase, cmap="rainbow", extent=[self.data["lon"]["value"].min(),
+                                                                      self.data["lon"]["value"].max(),
+                                                                      self.data["lat"]["value"].min(),
+                                                                      self.data["lat"]["value"].max()], vmin=-np.pi,
+                               vmax=np.pi)
+
                 else:
-                    plt.scatter(self.data["lon"]["value"].reshape(-1, 1), self.data["lat"]["value"].reshape(-1, 1),
-                                c=self.data[key]["value"].reshape(-1, 1), cmap="rainbow")
+                    # plt.scatter(self.data["lon"]["value"].reshape(-1, 1), self.data["lat"]["value"].reshape(-1, 1),
+                    #             c=self.data[key]["value"].reshape(-1, 1), cmap="rainbow")
+                    plt.imshow(self.data[key]["value"], cmap="rainbow",
+                               extent=[self.data["lon"]["value"].min(), self.data["lon"]["value"].max(),
+                                       self.data["lat"]["value"].min(), self.data["lat"]["value"].max()])
 
                 plt.xlabel("Longitude (deg)")
                 plt.ylabel("Latitude (deg)")
+                plt.xlim([self.data["lon"]["value"].min(), self.data["lon"]["value"].max()])
+                plt.ylim([self.data["lat"]["value"].min(), self.data["lat"]["value"].max()])
                 plt.title(f"{self.name}")
                 plt.colorbar(label=f"{key} [{self.data[key]['unit']}]")
                 # plt.show()
