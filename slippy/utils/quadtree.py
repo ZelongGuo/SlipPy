@@ -94,6 +94,8 @@ class QTree(object):
         c = find_children(self.root)
         xyz = []
         xywhz = []
+        xy4GMT = []
+        z4GMT = []
         for n in c:
             pixels = n.get_points(self.image)
             x = n.get_points(self.x)
@@ -106,18 +108,26 @@ class QTree(object):
                 xyz.append([new_x, new_y, mean_value])
                 # xywhz.append([x[0, 0], y[0, 0], n.width, n.height, mean_value])
                 xywhz.append([x[-1, 0], y[-1, 0], abs(x[-1, -1]-x[-1, 0]), abs(y[0, 0]-y[-1, 0]), mean_value])
-
+                xy4GMT.append([
+                    [x[-1, 0], y[-1, 0]],
+                    [x[-1, -1], y[-1, -1]],
+                    [x[0, -1], y[0, -1]],
+                    [x[0, 0], y[0, 0]]
+                ])
+                z4GMT.append([mean_value])
 
         self.qtscatter = np.array(xyz)
         self.qtrect = np.array(xywhz)
         self.qtnumber = self.qtrect.shape[0]
+        self.qtxy4GMT = np.array(xy4GMT)
+        self.qtz4GMT = np.array(z4GMT)
         print("+-" * 30)
         print(f"Quadtree downsampling: the number of segments are {self.qtnumber}")
         print("+-" * 30)
 
 
-
-    def show_qtresults(self, figtitle=None, clabel=None):
+    def show_qtresults(self, figtitle = None, xlabel = None, ylabel = None,
+                       clabel = None, save_as_file = "no", filename = None):
         plt.figure(figsize=(15, 3.5))
         plt.subplot(1, 3, 1)
         plt.title(f"{figtitle}")
@@ -129,6 +139,9 @@ class QTree(object):
         #             cmap="rainbow", vmin=vmin, vmax=vmax)
         plt.xlim([np.min(self.x), np.max(self.x)])
         plt.ylim([np.min(self.y), np.max(self.y)])
+        if xlabel is not None and ylabel is not None:
+            plt.xlabel(xlabel)
+            plt.ylabel(ylabel)
         plt.colorbar(label=f"{clabel}")
 
         plt.subplot(1, 3, 2)
@@ -151,7 +164,10 @@ class QTree(object):
         cb2 = cbar.ColorbarBase(cax, cmap=plt.cm.rainbow, norm=normal)
         ax.set_xlim(self.x.min(), self.x.max())
         ax.set_ylim(self.y.min(), self.y.max())
-        plt.show()
+        if save_as_file != "no":
+            plt.savefig(filename, dpi=300)
+        else:
+            plt.show()
         plt.close()
 
 

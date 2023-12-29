@@ -222,7 +222,8 @@ class InSAR(GeoTrans):
         return los
 
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-    def dsm_quadtree(self, mindim: int, maxdim: int, std_threshold: float, fraction: float = 0.3):
+    def dsm_quadtree(self, mindim: int, maxdim: int, std_threshold: float, fraction: float = 0.3,
+                     key: str = "los",  proj: str = "utm"):
         """Downsampling InSAR images (los deformation) with quadtree method.
 
         Args:
@@ -230,17 +231,27 @@ class InSAR(GeoTrans):
             - maxdim:           maximum number of the image pixels consist of the image block
             - std_threshold:    the standard deviation above which the image block will be split, unit in m
             - fraction:         the proportion of non-nan elements required in an image block, default is 0.3
+            - key:              key value of the data, "los" or "phase"
+            - proj:             geographic coordinates ("geo") or UTM projection ("utm")
+
         Returns:
             - None.
         """
-        qttemp = QTree(self.data["x"]["value"], self.data["y"]["value"], self.data["los"]["value"])
-        qttemp.subdivide(mindim, maxdim, std_threshold)
-        qttemp.qtresults(nonzero_fraction=fraction)
-        qttemp.show_qtresults("los", self.data["los"]["unit"])
-
-
-        # self.data_dsm = np.transpose(np.vstack([np.array(i), np.array(j), np.array(mean_value)]))
-
+        if proj == "geo":
+            qtll = QTree(self.data["lon"]["value"], self.data["lat"]["value"], self.data[key]["value"])
+        elif proj == "utm":
+            qtll = QTree(self.data["x"]["value"], self.data["y"]["value"], self.data[key]["value"])
+        else:
+            raise ValueError("Please specify a corrct coordinate system!")
+        qtll.subdivide(mindim, maxdim, std_threshold)
+        qtll.qtresults(nonzero_fraction=fraction)
+        # qtll.show_qtresults(key, self.data[key]["unit"])
+        qtll.parameters = {
+            "proj": proj,
+            "key": key,
+            "key_unit": self.data[key]["unit"]
+        }
+        self.data_dsm = qtll
 
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
@@ -248,9 +259,9 @@ class InSAR(GeoTrans):
         """Plot figure to SlipPy folder in current directory.
 
         Args:
-            - key:                Key value of data you want plotting, "los", "phase", "azi", "inc" ...
+            - key:                Key value of data you want plotting, "los", "phase", "azi", "inc", "dsm"
             - fig_name:           Specify a figure name without extension, .png file would be generated
-                                and saved automatically.
+                                  and saved automatically.
 
         Return:
             None.
@@ -286,9 +297,19 @@ class InSAR(GeoTrans):
                 plt.title(f"{self.name}")
                 plt.colorbar(label=f"{key} [{self.data[key]['unit']}]")
                 # plt.show()
-                plt.savefig(os.path.join(folder_name, fig_name + '.png'))
+                plt.savefig(os.path.join(folder_name, fig_name + '.png'), dpi=300)
                 plt.close()
                 print(f"Now {fig_name} is saved to {os.path.join(folder_name, fig_name + '.png')}")
+
+            case "dsm":
+                save_name = os.path.join(folder_name, fig_name + '.png')
+                if self.data_dsm.parameters["proj"] == "geo":
+                    self.data_dsm.show_qtresults(self.data_dsm.parameters["key"], "Lon (deg)", "Lat (deg)",
+                                                 self.data_dsm.parameters["key_unit"], "yes", save_name)
+                else:
+                    self.data_dsm.show_qtresults(self.data_dsm.parameters["key"], "X (km)", "Y (km)",
+                                                 self.data_dsm.parameters["key_unit"], "yes", save_name)
+                print(f"Now {fig_name} is saved to {save_name}")
 
             case _:
                 raise ValueError(f"Key {key} is not in data!")
