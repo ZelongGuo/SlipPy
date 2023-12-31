@@ -98,6 +98,9 @@ class GeoTrans(object):
         self.proj2utm = Transformer.from_crs(self.wgs, self.utm, always_xy=True)
         self.proj2wgs = Transformer.from_crs(self.utm, self.wgs, always_xy=True)
 
+        if utmzone is None:
+            self.utmzone = self.utm.utm_zone
+
         # Set Geod
         # self.geod = Geod(ellps=ellps)
 
@@ -170,7 +173,7 @@ class GeoTrans(object):
 # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
 if __name__ == "__main__":
     test = GeoTrans('TEST', -93, 43)
-    test.check_folder4files()
+    # test.check_folder()
 
     lonlat = np.array([[-90.2897635, 40.1467463],
                        [-91.4456356, 43.5353664],
