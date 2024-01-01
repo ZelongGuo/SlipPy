@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 
 
 # SlipPy libs
-from ..slippy import GeoTrans
+from ..seislip import GeoTrans
 from ..utils.quadtree import QTree
 
 
