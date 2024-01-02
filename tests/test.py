@@ -511,26 +511,148 @@ Created on 21.07.23
 #
 # print("all done.")
 
-import sys
-sys.path.append("../slippy/utils/")
+# import sys
+# sys.path.append("../slippy/utils/")
+#
+# from quadtree import QTree
+# import numpy as np
+#
+# delta = 0.025
+# x = y = np.arange(-3.0, 5.0, delta)
+# X, Y = np.meshgrid(x, y)
+# Z1 = np.exp(-X ** 2 - Y ** 2)
+# Z2 = np.exp(-(X - 1) ** 2 - (Y - 1) ** 2)
+# Z = (Z1 - Z2) * 20
+# img = Z
+# # set up nan
+# img[:, 0:120] = 0
+# img[:, -1] = 0
+# img[0, :] = 0
+# img[-1, :] = 0
+#
+# qtTemp = QTree(X, Y, img)  # contrast threshold, min cell size, img
+# qtTemp.subdivide(16, 64, np.std(img) - 2)  # recursively generates quad tree
+# qtTemp.qtresults(0.3)
+# qtTemp.show_qtresults()
 
-from quadtree import QTree
-import numpy as np
+# import numpy as np
+# import matplotlib.pyplot as plt
+# from mpl_toolkits.mplot3d import Axes3D
+#
+# def plot_3d_fault(xc, yc, zc, length, width, strike, dip):
+#     fig = plt.figure()
+#     ax = fig.add_subplot(111, projection='3d')
+#
+#     # 转换走向和倾向为弧度
+#     strike_rad = np.radians(strike)
+#     dip_rad = np.radians(dip)
+#
+#     # 生成断层的坐标
+#     x = np.linspace(xc - length / 2, xc + length / 2, 100)
+#     y = np.linspace(yc - width / 2, yc + width / 2, 100)
+#     x, y = np.meshgrid(x, y)
+#
+#     # 根据走向和倾向计算断层坐标
+#     z = zc + (x - xc) * np.tan(dip_rad) * np.cos(strike_rad) + (y - yc) * np.tan(dip_rad) * np.sin(strike_rad)
+#
+#     # 绘制3D断层
+#     ax.plot_surface(x, y, z, color='b', alpha=0.6)
+#
+#     # 设置坐标轴标签
+#     ax.set_xlabel('X')
+#     ax.set_ylabel('Y')
+#     ax.set_zlabel('Z')
+#
+#     # 显示图形
+#     plt.show()
+#
+# # 例子：中心位置坐标为 (1, 2, 3)，长度为 5，宽度为 2，走向为 45 度，倾向为 30 度
+# plot_3d_fault(xc=1, yc=2, zc=3, length=5, width=2, strike=45, dip=30)
 
-delta = 0.025
-x = y = np.arange(-3.0, 5.0, delta)
-X, Y = np.meshgrid(x, y)
-Z1 = np.exp(-X ** 2 - Y ** 2)
-Z2 = np.exp(-(X - 1) ** 2 - (Y - 1) ** 2)
-Z = (Z1 - Z2) * 20
-img = Z
-# set up nan
-img[:, 0:120] = 0
-img[:, -1] = 0
-img[0, :] = 0
-img[-1, :] = 0
 
-qtTemp = QTree(X, Y, img)  # contrast threshold, min cell size, img
-qtTemp.subdivide(16, 64, np.std(img) - 2)  # recursively generates quad tree
-qtTemp.qtresults(0.3)
-qtTemp.show_qtresults()
+# import numpy as np
+# import matplotlib.pyplot as plt
+# from matplotlib.patches import Rectangle
+#
+#
+# def create_fault_patch(center_x, center_y, depth, length, width, strike, dip):
+#     # 计算矩形的角度
+#     angle_rad = np.radians(strike)
+#
+#     # 计算矩形的四个顶点坐标
+#     dx = 0.5 * length * np.cos(angle_rad)
+#     dy = 0.5 * length * np.sin(angle_rad)
+#     x = np.array([center_x - dx, center_x + dx, center_x + dx, center_x - dx, center_x - dx])
+#     y = np.array([center_y - dy, center_y - dy, center_y + dy, center_y + dy, center_y - dy])
+#
+#     # 构建矩形断层片
+#     fault_patch = Rectangle((x[0], y[0]), length, width, angle=np.degrees(angle_rad), fill=None, edgecolor='r')
+#
+#     return fault_patch
+#
+#
+# # 断层参数
+# center_x = 10.0  # 中心点 x 坐标
+# center_y = 10.0  # 中心点 y 坐标
+# depth = 5.0  # 深度
+# length = 20.0  # 长度
+# width = 5.0  # 宽度
+# strike = 45.0  # 走向
+# dip = 30.0  # 倾向
+#
+# # 创建矩形断层片
+# fault_patch = create_fault_patch(center_x, center_y, depth, length, width, strike, dip)
+#
+# # 绘制图形
+# fig, ax = plt.subplots()
+# ax.add_patch(fault_patch)
+# ax.set_xlim(center_x - length, center_x + length)
+# ax.set_ylim(center_y - length, center_y + length)
+# ax.set_aspect('equal', adjustable='datalim')
+# plt.title('Fault Patch')
+# plt.xlabel('X')
+# plt.ylabel('Y')
+# plt.show()
+
+# import numpy as np
+# import matplotlib.pyplot as plt
+# from mpl_toolkits.mplot3d import Axes3D
+#
+# def create_fault(x0, y0, z0, azimuth, dip, length, width):
+#     # 生成网格坐标
+#     x = np.linspace(x0 - length / 2, x0 + length / 2, 2)
+#     y = np.linspace(y0 - width / 2, y0 + width / 2, 2)
+#     x, y = np.meshgrid(x, y)
+#
+#     # 根据断层的走向和倾向计算z坐标
+#     z = z0 + (x - x0) * np.tan(np.radians(dip)) + (y - y0) * np.tan(np.radians(azimuth))
+#
+#     return x, y, z
+#
+# # 已知的断层参数
+# x0, y0, z0 = 0, 0, 0  # 断层上边缘中点的坐标
+# azimuth = 45  # 断层走向
+# dip = 30  # 断层倾向
+# length = 20  # 断层长度
+# width = 10  # 断层宽度
+#
+# # 创建3D矩形断层片
+# x, y, z = create_fault(x0, y0, z0, azimuth, dip, length, width)
+#
+# # 可视化
+# fig = plt.figure(figsize=(10, 6))
+# ax = fig.add_subplot(111, projection='3d')
+# ax.plot_surface(x, y, z, cmap='viridis', alpha=0.8)
+#
+# # 设置坐标轴标签
+# ax.set_xlabel('X-axis')
+# ax.set_ylabel('Y-axis')
+# ax.set_zlabel('Z-axis')
+#
+# # 显示图形
+# plt.show()
+
+z1 = 1 + 2j
+z2 = 2 + 3j
+z3 = z1 + z2
+z4 = z1 * z2
