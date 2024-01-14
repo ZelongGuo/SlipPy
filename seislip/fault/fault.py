@@ -111,24 +111,27 @@ class Fault(GeoTrans):
         x_cc, y_cc, z_cc = (x_uc + x_bc) / 2, (y_uc + y_bc) / 2, (z_uc + z_bc) / 2
 
         fault = {
-            "upper left":       (x_ul, y_ul, z_ul),
-            "upper center":     (x_uc, y_uc, z_uc),
-            "upper right":      (x_ur, y_ur, z_ur),
-            "bottom left":      (x_bl, y_bl, z_bl),
-            "bottom center":    (x_bc, y_bc, z_bc),
-            "bottom right":     (x_br, y_br, z_br),
-            "centroid center":  (x_cc, y_cc, z_cc),
+            "upper left":       [x_ul, y_ul, z_ul],
+            "upper center":     [x_uc, y_uc, z_uc],
+            "upper right":      [x_ur, y_ur, z_ur],
+            "bottom left":      [x_bl, y_bl, z_bl],
+            "bottom center":    [x_bc, y_bc, z_bc],
+            "bottom right":     [x_br, y_br, z_br],
+            "centroid center":  [x_cc, y_cc, z_cc],
             "length":           length,
             "width":            width
         }
 
-        fault_corner = {
-            "x":        [[x_ul, x_ur], [x_bl, x_br]],
-            "y":        [[y_ul, y_ur], [y_bl, y_br]],
-            "z":        [[z_ul, z_ur], [z_bl, z_br]],
-            "length":   length,
-            "width":    width
-        }
+        fault_corner = [
+            [fault["upper left"], fault["upper right"], fault["bottom right"], fault["bottom left"]]
+        ]
+        # fault_corner = np.array(fault_corner)
+
+        # fault_corner = {
+        #     "x":        [[x_ul, x_ur], [x_bl, x_br]],
+        #     "y":        [[y_ul, y_ur], [y_bl, y_br]],
+        #     "z":        [[z_ul, z_ur], [z_bl, z_br]],
+        # }
 
         # temp = self.xy2ll(x_cc, y_cc)
 
@@ -144,7 +147,7 @@ class Fault(GeoTrans):
         Return:
             - None.
         """
-
+        verts = []
         x = []
         y = []
         z = []
@@ -152,43 +155,105 @@ class Fault(GeoTrans):
         n = math.floor(width / patchwid)
 
         for i in range(m):
-            for j in range(n):
-                if i == 0 and j == 0:
+            if i == 0:
+                _, temp = self._initialize_fault_corners(pointpos, lon, lat, verdepth, strike, dip, patchlen, patchwid)
+                x0, y0 = self.xy2ll(temp[-1][3][0], temp[-1][3][1])
+                z0 = temp[-1][3][2]
+
+            else:
+                if pointpos in ("ul", "UL", "upper left", "upper_left"):
+                    lon, lat = self.xy2ll(verts[-1][1][0], verts[-1][1][1])
+                    verdepth = verts[-1][1][2]
+                    x0, y0 = self.xy2ll(verts[-1][3][0], verts[-1][3][1])
+                    z0 = verts[-1][3][2]
+                _, temp = self._initialize_fault_corners(pointpos, lon, lat, verdepth, strike, dip, patchlen, patchwid)
+            verts.append(temp[0])
+            x.append(x0)
+            y.append(y0)
+            z.append(z0)
+
+        for lon, lat, verdepth in zip(x, y, z):
+            for i in range(n-1):
+                if i == 1:
                     _, temp = self._initialize_fault_corners(pointpos, lon, lat, verdepth, strike, dip, patchlen, patchwid)
                 else:
-                    if pointpos in ("ul", "UL"):
-                        lon, lat = self.xy2ll(x[-1][0], y[-1][0])
-                        verdepth = z[-1][0]
-                    # elif pointpos in ("ur", "UR"):
-                    #     lon, lat = self.xy2ll(x[-1][1], y[-1][1])
-                _, temp = self._initialize_fault_corners(pointpos, lon, lat, verdepth, strike, dip, patchlen, patchwid)
-                x.append(temp["x"])
-                y.append(temp["y"])
-                z.append(temp["z"])
-                # TODO
+                    if pointpos in ("ul", "UL", "upper left", "upper_left"):
+                        lon, lat = self.xy2ll(verts[-1][3][0], verts[-1][3][1])
+                        verdepth = verts[-1][3][2]
+                    _, temp = self._initialize_fault_corners(pointpos, lon, lat, verdepth, strike, dip, patchlen,
+                                                             patchwid)
+                verts.append(temp[0])
 
+
+
+        return verts
+
+
+        # for i in range(m):
+        #     for j in range(n):
+        #         if i == 0 and j == 0:
+        #             _, temp = self._initialize_fault_corners(pointpos, lon, lat, verdepth, strike, dip, patchlen, patchwid)
+        #         else:
+        #             if pointpos in ("ul", "UL", "upper left", "upper_left"):
+        #                 lon, lat = self.xy2ll(x[-1][0][-1], y[-1][0][-1])
+        #                 verdepth = z[-1][0][-1]
+        #             # elif pointpos in ("ur", "UR"):
+        #             #     lon, lat = self.xy2ll(x[-1][1], y[-1][1])
+        #             _, temp = self._initialize_fault_corners(pointpos, lon, lat, verdepth, strike, dip, patchlen, patchwid)
+        #         x.append(temp["x"])
+        #         y.append(temp["y"])
+        #         z.append(temp["z"])
+        #         # TODO
+        #
         # x, y, z = np.array(x), np.array(y), np.array(z)
         #
-        # x = np.reshape(x, (m, n))
-        # y = np.reshape(y, (m, n))
-        # z = np.reshape(z, (m, n))
-
-        return x, y, z
+        # x = np.reshape(x, (m * 2, n * 2))
+        # y = np.reshape(y, (m * 2, n * 2))
+        # z = np.reshape(z, (m * 2, n * 2))
+        #
+        # return x, y, z
 
 
         # xn = np.linspace(ul[0], ur[0], m)
         # yn = np.linspace(ul[1], )
 
-    def plot(self, x, y, z):
-        x, y, z = np.array(x), np.array(y), np.array(z)
+    def plot(self, verts):
+        # x, y, z = np.array(x), np.array(y), np.array(z)
+        # import matplotlib.pyplot as plt
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111, projection='3d')
+        # ax.plot_surface(x, y, z)
+        # ax.set_xlabel("X")
+        # ax.set_ylabel("Y")
+        # ax.set_zlabel("Z")
+        # ax.set_zlim(z.min(), 0)
+        #
+        # plt.show()
+
         import matplotlib.pyplot as plt
+        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
-        ax.plot_surface(x, y, z)
-        ax.set_xlabel("X")
-        ax.set_ylabel("Y")
-        ax.set_zlabel("Z")
-        ax.set_zlim(z.min(), 0)
+        poly3d = Poly3DCollection(verts, edgecolor='k', alpha=0.7)
+
+        ax.add_collection3d(poly3d)
+
+        verts = np.array(verts)
+        xmin = verts[:, :, 0].min()
+        xmax = verts[:, :, 0].max()
+        ymin = verts[:, :, 1].min()
+        ymax = verts[:, :, 1].max()
+        zmin = verts[:, :, 2].min()
+        zmax = verts[:, :, 2].max()
+
+
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        ax.set_xlim(xmin, xmax)
+        ax.set_ylim(ymin, ymax)
+        ax.set_zlim(zmin, zmax)
 
         plt.show()
 
@@ -202,11 +267,12 @@ if __name__ == "__main__":
     fault = Fault("flt", 44.28, 35.47)
     # patch1, patch_corner1 = fault.initialize_planar_fault(lon_uc=44.344, lat_uc=35.603, verdepth_uc=3, strike=10, dip=45, length=80, width=50)
     patch1, patch_corner1 = fault._initialize_fault_corners(pointpos="upper center", lon=44.344, lat=35.603, verdepth=-3, strike=10, dip=45, length=80, width=50)
-    x, y, z = fault.mesh_planar_fault(pointpos="upper left", lon=44.344, lat=35.603, verdepth=-3, strike=10, dip=45, length=80, width=50, patchlen=2, patchwid=2)
+    verts = fault.mesh_planar_fault(pointpos="upper left", lon=44.344, lat=35.603, verdepth=-3, strike=10, dip=45, length=80, width=50, patchlen=2, patchwid=2)
 
     #
     #
-    # fault.plot(patch_corner1["x"], patch_corner1["y"], patch_corner1["z"])
-    # fault.plot(x, y, z)
+
+    # fault.plot(patch_corner1)
+    fault.plot(verts)
 
 

@@ -535,39 +535,39 @@ Created on 21.07.23
 # qtTemp.qtresults(0.3)
 # qtTemp.show_qtresults()
 
-# import numpy as np
-# import matplotlib.pyplot as plt
-# from mpl_toolkits.mplot3d import Axes3D
-#
-# def plot_3d_fault(xc, yc, zc, length, width, strike, dip):
-#     fig = plt.figure()
-#     ax = fig.add_subplot(111, projection='3d')
-#
-#     # 转换走向和倾向为弧度
-#     strike_rad = np.radians(strike)
-#     dip_rad = np.radians(dip)
-#
-#     # 生成断层的坐标
-#     x = np.linspace(xc - length / 2, xc + length / 2, 100)
-#     y = np.linspace(yc - width / 2, yc + width / 2, 100)
-#     x, y = np.meshgrid(x, y)
-#
-#     # 根据走向和倾向计算断层坐标
-#     z = zc + (x - xc) * np.tan(dip_rad) * np.cos(strike_rad) + (y - yc) * np.tan(dip_rad) * np.sin(strike_rad)
-#
-#     # 绘制3D断层
-#     ax.plot_surface(x, y, z, color='b', alpha=0.6)
-#
-#     # 设置坐标轴标签
-#     ax.set_xlabel('X')
-#     ax.set_ylabel('Y')
-#     ax.set_zlabel('Z')
-#
-#     # 显示图形
-#     plt.show()
-#
-# # 例子：中心位置坐标为 (1, 2, 3)，长度为 5，宽度为 2，走向为 45 度，倾向为 30 度
-# plot_3d_fault(xc=1, yc=2, zc=3, length=5, width=2, strike=45, dip=30)
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+def plot_3d_fault(xc, yc, zc, length, width, strike, dip):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # 转换走向和倾向为弧度
+    strike_rad = np.radians(strike)
+    dip_rad = np.radians(dip)
+
+    # 生成断层的坐标
+    x = np.linspace(xc - length / 2, xc + length / 2, 100)
+    y = np.linspace(yc - width / 2, yc + width / 2, 100)
+    x, y = np.meshgrid(x, y)
+
+    # 根据走向和倾向计算断层坐标
+    z = zc + (x - xc) * np.tan(dip_rad) * np.cos(strike_rad) + (y - yc) * np.tan(dip_rad) * np.sin(strike_rad)
+
+    # 绘制3D断层
+    ax.plot_surface(x, y, z, color='b', alpha=0.6)
+
+    # 设置坐标轴标签
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    # 显示图形
+    plt.show()
+
+# 例子：中心位置坐标为 (1, 2, 3)，长度为 5，宽度为 2，走向为 45 度，倾向为 30 度
+plot_3d_fault(xc=1, yc=2, zc=3, length=5, width=2, strike=45, dip=30)
 
 
 # import numpy as np
@@ -657,3 +657,96 @@ Created on 21.07.23
 # z3 = z1 + z2
 # z4 = z1 * z2
 
+# -------------------------------------------------------------------------------
+
+# import matplotlib.pyplot as plt
+# from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+# import numpy as np
+#
+# fig = plt.figure()
+# ax = fig.add_subplot(111, projection='3d')
+#
+# # 定义立方体的八个顶点
+# vertices = [
+#     [1, 1, 1],
+#     [1, 1, 0],
+#     [1, 0, 1],
+#     [1, 0, 0],
+#     [0, 1, 1],
+#     [0, 1, 0],
+#     [0, 0, 1],
+#     [0, 0, 0]
+# ]
+#
+# # 定义立方体的六个面，每个面由四个顶点组成
+# faces = [
+#     [vertices[0], vertices[1], vertices[3], vertices[2]],
+#     [vertices[4], vertices[5], vertices[7], vertices[6]],
+#     [vertices[0], vertices[1], vertices[5], vertices[4]],
+#     [vertices[2], vertices[3], vertices[7], vertices[6]],
+#     [vertices[0], vertices[2], vertices[6], vertices[4]],
+#     [vertices[1], vertices[3], vertices[7], vertices[5]]
+#     ]
+#
+#
+#
+# # 创建 Poly3DCollection 对象
+# poly3d = Poly3DCollection(faces, edgecolor='k')
+#
+# # 将 Poly3DCollection 添加到三维坐标轴上
+# ax.add_collection3d(poly3d)
+#
+# # 设置坐标轴标签
+# ax.set_xlabel('X')
+# ax.set_ylabel('Y')
+# ax.set_zlabel('Z')
+#
+# plt.show()
+
+# -------------------------------------------------------------------------------
+
+# import math
+#
+# import matplotlib.pyplot as plt
+# import numpy as np
+#
+# from matplotlib.collections import PolyCollection
+#
+# # Fixing random state for reproducibility
+# np.random.seed(19680801)
+#
+#
+# def polygon_under_graph(x, y):
+#     """
+#     Construct the vertex list which defines the polygon filling the space under
+#     the (x, y) line graph. This assumes x is in ascending order.
+#     """
+#     return [(x[0], 0.), *zip(x, y), (x[-1], 0.)]
+#
+#
+# ax = plt.figure().add_subplot(projection='3d')
+#
+# x = np.linspace(0., 10., 31)
+# lambdas = range(1, 9)
+#
+# # verts[i] is a list of (x, y) pairs defining polygon i.
+# gamma = np.vectorize(math.gamma)
+# verts = [polygon_under_graph(x, l**x * np.exp(-l) / gamma(x + 1))
+#          for l in lambdas]
+# facecolors = plt.colormaps['viridis_r'](np.linspace(0, 1, len(verts)))
+#
+# poly = PolyCollection(verts, facecolors=facecolors, alpha=.7)
+# ax.add_collection3d(poly, zs=lambdas, zdir='y')
+#
+# ax.set(xlim=(0, 10), ylim=(1, 9), zlim=(0, 0.35),
+#        xlabel='x', ylabel=r'$\lambda$', zlabel='probability')
+#
+# plt.show()
+
+# -------------------------------------------------------------------------------
+# x = [1, 2,3 ,4]
+# y = [4, 5, 6, 7]
+# z = [8, 9, 10, 11]
+#
+# for m, n, q in zip(x, y ,z):
+#     print(f"Line:{m}, {n}, {q}")
