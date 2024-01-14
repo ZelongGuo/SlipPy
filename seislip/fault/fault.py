@@ -267,12 +267,13 @@ if __name__ == "__main__":
     fault = Fault("flt", 44.28, 35.47)
     # patch1, patch_corner1 = fault.initialize_planar_fault(lon_uc=44.344, lat_uc=35.603, verdepth_uc=3, strike=10, dip=45, length=80, width=50)
     patch1, patch_corner1 = fault._initialize_fault_corners(pointpos="upper center", lon=44.344, lat=35.603, verdepth=-3, strike=10, dip=45, length=80, width=50)
-    verts = fault.mesh_planar_fault(pointpos="upper left", lon=44.344, lat=35.603, verdepth=-3, strike=10, dip=45, length=80, width=50, patchlen=2, patchwid=2)
+    # fault.plot(patch_corner1)
+    # verts = fault.mesh_planar_fault(pointpos="upper left", lon=44.344, lat=35.603, verdepth=-3, strike=10, dip=45, length=80, width=50, patchlen=2, patchwid=2)
 
     #
     #
 
     # fault.plot(patch_corner1)
-    fault.plot(verts)
+    # fault.plot(verts)
 
 
