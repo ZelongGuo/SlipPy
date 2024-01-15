@@ -1,11 +1,15 @@
 #!usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+Planar fault class for single or multiple faults.
+
 Created on 31.12.23
 
 @author: Zelong Guo
 @GFZ, Potsdam
 """
+
+__author__ = "Zelong Guo"
 
 import sys
 
@@ -13,29 +17,99 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 
-sys.path.append("../")
-from seislip.seislip import GeoTrans
+# seislip libs
+if __name__ == "__main__":
+    sys.path.append("../")
+    from seislip.seislip import GeoTrans
+else:
+    from ..seislip import GeoTrans
 
-# slippy libs
-# from ..seislip import GeoTrans
 
 class Fault(GeoTrans):
+    """Constructing a Fault object with four corner coordinates (and central/centroid point coordinates).
+
+    The object of this class would be used for mesh the fault plane into rectangle or triangle patches.
+
+    Args:
+        - name:                 Fault instance name
+        - lon0:                 longitude used for specifying the utm zone
+        - lat0:                 lattitude used for specifying the utm zone
+        - ellps:                Optional, reference ellipsoid, defatult = "WGS84"
+        - utmzone:              Optional, if not specify lon0, lat0 and ellps, default = None.
+
+    Return:
+        - None.
+    """
     def __init__(self, name, lon0, lat0, ellps="WGS84", utmzone=None):
         super().__init__(name, lon0, lat0, ellps, utmzone)
 
         # fault parameters
-        self.flon0 = None
-        self.flat0 = None
-        self.fdepth = None
-        self.fstrike = None
-        self.fdip = None
-        self.flength = None
-        self.fwidth = None
+        self.origin = None
+        self.strike = None
+        self.dip = None
+        self.length = None
+        self.width = None
 
-        self.patch = {}
+        # read from trace and etc...
+        self.mutifaults = None  # TODO: multifaults is a list contain multiple fault objects,
+        # TODO: if there is multiple faults, then delete the above attributes
 
-    def _initialize_fault_corners(self, pointpos: str, lon, lat, verdepth, strike, dip, length, width):
-        """Initialize a rectangle fault/patch by calculating the corner or central points of the fault, based
+    def initialize_fault(self, pointpos: str, lon, lat, verdepth, strike, dip, length, width):
+        """Initialize a rectangle fault plane by specifying a corner or central point of the fault.
+
+        The definition of the fault coordinate system:
+        This coordinate system is right-hand:
+        X:      along strike
+        Y:      along opposite direction of dip
+        Z:      normal direction the fault
+        Point position on fault plane, the origin of the fault coordinate system is bottom original point.
+        "uo": upper original point,     "uc": upper center point,       "ue": upper end point
+        "bo": bottom original point,    "bc": bottom center point,      "be": bottom end point
+        "cc": centroid center point
+
+        The definition of UTM system:
+        X:      easting, km
+        Y:      northing, km
+        Z:      zenith direction, km
+
+        Args:
+            - pointpos:       the position of the specified fault point in the fault coordinate system:
+                              "uo", "uc", "ue", "bo", "bc", "be", "cc". "uc" is strongly recommended.
+            - lon:            longitude of the specified point, degree
+            - lat:            latitude of the specified point, degree
+            - verdepth:       vertical depth of the specified point, km. Depth should
+                              specified as Negative value.
+            - strike:         strike angle of the fault, degree
+            - dip:            dip angle of the fault, degree
+            - width:          width along the fault dip direction, km
+            - length:         length along the fault strike direction, km
+
+        Return:
+            - None.
+        """
+        # pointpos_list = ("uo",  "UO",  "upper origin",    "upper_origin",
+        #                  "uc",  "UC",  "upper center",    "upper_center",
+        #                  "ue",  "UE",  "upper end",       "upper_end",
+        #                  "bo",  "BO",  "bottom origin",   "bottom_origin"
+        #                  "bc",  "BC",  "bottom center",   "bottom_center",
+        #                  "be",  "BE",  "bottom end",      "bottom_end",
+        #                  "cc",  "CC",  "centroid center", "centroid_center")
+
+        # For now only support "uc"
+        pointpos_list = ("uc",  "UC",  "upper center",    "upper_center")
+        if pointpos not in pointpos_list:
+            raise ValueError("Please specify a right point position!")
+        else:
+            self.origin = (pointpos, (lon, lat, verdepth))
+            self.strike = strike
+            self.dip = dip
+            self.length = length
+            self.width = width
+
+    # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+
+    def _initialize_fault(self, pointpos: str, lon, lat, verdepth, strike, dip, length, width):
+        """Initialize a rectangle fault plane by calculating the corner or central points of the fault, based
         on one point given.
 
         Args:
@@ -137,6 +211,9 @@ class Fault(GeoTrans):
 
         return fault, fault_corner
 
+    def read_from_trace(self):
+        pass
+
     def mesh_planar_fault(self, pointpos: str, lon, lat, verdepth, strike, dip, length, width, patchlen, patchwid):
         """Meshing a uniform fault plane to tons of fault patches.
 
@@ -156,7 +233,7 @@ class Fault(GeoTrans):
 
         for i in range(m):
             if i == 0:
-                _, temp = self._initialize_fault_corners(pointpos, lon, lat, verdepth, strike, dip, patchlen, patchwid)
+                _, temp = self._initialize_fault(pointpos, lon, lat, verdepth, strike, dip, patchlen, patchwid)
                 x0, y0 = self.xy2ll(temp[-1][3][0], temp[-1][3][1])
                 z0 = temp[-1][3][2]
 
@@ -166,7 +243,7 @@ class Fault(GeoTrans):
                     verdepth = verts[-1][1][2]
                     x0, y0 = self.xy2ll(verts[-1][3][0], verts[-1][3][1])
                     z0 = verts[-1][3][2]
-                _, temp = self._initialize_fault_corners(pointpos, lon, lat, verdepth, strike, dip, patchlen, patchwid)
+                _, temp = self._initialize_fault(pointpos, lon, lat, verdepth, strike, dip, patchlen, patchwid)
             verts.append(temp[0])
             x.append(x0)
             y.append(y0)
@@ -175,12 +252,12 @@ class Fault(GeoTrans):
         for lon, lat, verdepth in zip(x, y, z):
             for i in range(n-1):
                 if i == 1:
-                    _, temp = self._initialize_fault_corners(pointpos, lon, lat, verdepth, strike, dip, patchlen, patchwid)
+                    _, temp = self._initialize_fault(pointpos, lon, lat, verdepth, strike, dip, patchlen, patchwid)
                 else:
                     if pointpos in ("ul", "UL", "upper left", "upper_left"):
                         lon, lat = self.xy2ll(verts[-1][3][0], verts[-1][3][1])
                         verdepth = verts[-1][3][2]
-                    _, temp = self._initialize_fault_corners(pointpos, lon, lat, verdepth, strike, dip, patchlen,
+                    _, temp = self._initialize_fault(pointpos, lon, lat, verdepth, strike, dip, patchlen,
                                                              patchwid)
                 verts.append(temp[0])
 
@@ -266,8 +343,8 @@ if __name__ == "__main__":
 
     fault = Fault("flt", 44.28, 35.47)
     # patch1, patch_corner1 = fault.initialize_planar_fault(lon_uc=44.344, lat_uc=35.603, verdepth_uc=3, strike=10, dip=45, length=80, width=50)
-    patch1, patch_corner1 = fault._initialize_fault_corners(pointpos="upper center", lon=44.344, lat=35.603, verdepth=-3, strike=10, dip=45, length=80, width=50)
-    # fault.plot(patch_corner1)
+    patch1, patch_corner1 = fault._initialize_fault(pointpos="upper center", lon=44.344, lat=35.603, verdepth=-3, strike=10, dip=45, length=80, width=50)
+    fault.plot(patch_corner1)
     # verts = fault.mesh_planar_fault(pointpos="upper left", lon=44.344, lat=35.603, verdepth=-3, strike=10, dip=45, length=80, width=50, patchlen=2, patchwid=2)
 
     #
