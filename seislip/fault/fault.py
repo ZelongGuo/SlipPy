@@ -293,6 +293,18 @@ class Fault(GeoTrans):
         # xn = np.linspace(ul[0], ur[0], m)
         # yn = np.linspace(ul[1], )
 
+    def plot_new(self, xyz):
+        import matplotlib.pyplot as plt
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.plot_surface(xyz[0], xyz[1], xyz[2], edgecolor='k', alpha=0.7)
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
+        ax.set_zlabel("Z")
+        ax.set_zlim(xyz[2].min(), 0)
+
+        plt.show()
+
     def plot(self, verts):
         # x, y, z = np.array(x), np.array(y), np.array(z)
         # import matplotlib.pyplot as plt
@@ -311,7 +323,7 @@ class Fault(GeoTrans):
 
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
-        poly3d = Poly3DCollection(verts, edgecolor='k', alpha=0.7)
+        poly3d = Poly3DCollection(verts, edgecolor='black', alpha=0.7)
 
         ax.add_collection3d(poly3d)
 
