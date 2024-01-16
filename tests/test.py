@@ -3,8 +3,8 @@
 """
 Created on 21.07.23
 
-@author: Zelong Guo
-@GFZ, Potsdam
+@author: Zelong Guo, Potsdam
+
 """
 # from data import plot_data
 # import os

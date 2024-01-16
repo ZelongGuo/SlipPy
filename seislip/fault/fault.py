@@ -6,7 +6,6 @@ Planar fault class for single or multiple faults.
 Created on 31.12.23
 
 @author: Zelong Guo
-@GFZ, Potsdam
 """
 
 __author__ = "Zelong Guo"

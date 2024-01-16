@@ -6,7 +6,6 @@ Rectangle fault Patch Construction.
 Created on 15.01.24
 
 @author: Zelong Guo
-@GFZ, Potsdam
 """
 __author__ = "Zelong Guo"
 

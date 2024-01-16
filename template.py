@@ -4,7 +4,7 @@
 corresponding changes as you need.
 
 Created on Thu May 18 15:32:47 2023
-@author: Zelong Guo, GFZ, Potsdam
+@author: Zelong Guo, Potsdam
 """
 
 BASE_DIR = "Users/zelong/codes/SlipPy/"

@@ -6,7 +6,6 @@ Coordinate system transformation.
 Created on 14.01.24
 
 @author: Zelong Guo
-@GFZ, Potsdam
 """
 import numpy as np
 

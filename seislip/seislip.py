@@ -4,7 +4,7 @@
 This is the base classes for SlipPy.
 
 Created on Tue Nov. 21 2023
-@author: Zelong Guo, GFZ, Potsdam
+@author: Zelong Guo
 """
 __author__ = "Zelong Guo"
 __version__ = "1.0.0"

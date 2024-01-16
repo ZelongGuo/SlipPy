@@ -3,7 +3,7 @@
 """
 InSAR data and related operations.
 
-Author: Zelong Guo, @ GFZ, Potsdam
+Author: Zelong Guo 
 Email: zelong.guo@outlook.com
 Created on Tue May 18 20:08:23 2023
 

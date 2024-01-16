@@ -1,7 +1,7 @@
 """
 Quadtree down-sampling for InSAR images.
 
-Author: Zelong Guo, @ GFZ, Potsdam
+Author: Zelong Guo
 Email: zelong.guo@outlook.com
 Create on 27, Dec. 2023
 

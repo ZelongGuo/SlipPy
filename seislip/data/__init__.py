@@ -4,5 +4,4 @@
 Created on 10.11.23
 
 @author: Zelong Guo
-@GFZ, Potsdam
 """

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Author: Zelong Guo, @ GFZ, Potsdam
+Author: Zelong Guo
 Email: zelong.guo@outlook.com
 Created on Sat May 20 20:29:30 2023
 
