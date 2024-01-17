@@ -107,11 +107,6 @@ class RectPatch(Fault):
 
 
 
-
-
-
-
-
 # -----------------------------------------------------------------------------------------
 if __name__ == "__main__":
     fault = Fault("flt", 44.28, 35.47)
@@ -125,7 +120,7 @@ if __name__ == "__main__":
     patch.initialize_rectangle_patch(pointpos="upper center", lon=44.34, lat=35.603, verdepth=-3,
                            strike=10, dip=45, length=80, width=50)
 
-    patch_points = patch.discretize(2, 2)
+    patch_points = patch.discretize(3, 2)
     # pputm = patch.fault2utm(patch_points)
     patch.plot(patch_points)
 

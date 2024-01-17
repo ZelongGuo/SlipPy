@@ -23,6 +23,7 @@ if __name__ == "__main__":
 else:
     from ..seislip import GeoTrans
 
+# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
 
 class Fault(GeoTrans):
     """Constructing a Fault object with four corner coordinates (and central/centroid point coordinates).
@@ -213,97 +214,6 @@ class Fault(GeoTrans):
     def read_from_trace(self):
         pass
 
-    def mesh_planar_fault(self, pointpos: str, lon, lat, verdepth, strike, dip, length, width, patchlen, patchwid):
-        """Meshing a uniform fault plane to tons of fault patches.
-
-        Args:
-            - fault:                fault rectangle plane, a dict given by initialize_palar_fault
-            - patchlen:             the length of fault patch
-            - patchwid:             the width of fault patch
-        Return:
-            - None.
-        """
-        verts = []
-        x = []
-        y = []
-        z = []
-        m = math.floor(length / patchlen)
-        n = math.floor(width / patchwid)
-
-        for i in range(m):
-            if i == 0:
-                _, temp = self._initialize_fault(pointpos, lon, lat, verdepth, strike, dip, patchlen, patchwid)
-                x0, y0 = self.xy2ll(temp[-1][3][0], temp[-1][3][1])
-                z0 = temp[-1][3][2]
-
-            else:
-                if pointpos in ("ul", "UL", "upper left", "upper_left"):
-                    lon, lat = self.xy2ll(verts[-1][1][0], verts[-1][1][1])
-                    verdepth = verts[-1][1][2]
-                    x0, y0 = self.xy2ll(verts[-1][3][0], verts[-1][3][1])
-                    z0 = verts[-1][3][2]
-                _, temp = self._initialize_fault(pointpos, lon, lat, verdepth, strike, dip, patchlen, patchwid)
-            verts.append(temp[0])
-            x.append(x0)
-            y.append(y0)
-            z.append(z0)
-
-        for lon, lat, verdepth in zip(x, y, z):
-            for i in range(n-1):
-                if i == 1:
-                    _, temp = self._initialize_fault(pointpos, lon, lat, verdepth, strike, dip, patchlen, patchwid)
-                else:
-                    if pointpos in ("ul", "UL", "upper left", "upper_left"):
-                        lon, lat = self.xy2ll(verts[-1][3][0], verts[-1][3][1])
-                        verdepth = verts[-1][3][2]
-                    _, temp = self._initialize_fault(pointpos, lon, lat, verdepth, strike, dip, patchlen,
-                                                             patchwid)
-                verts.append(temp[0])
-
-
-
-        return verts
-
-
-        # for i in range(m):
-        #     for j in range(n):
-        #         if i == 0 and j == 0:
-        #             _, temp = self._initialize_fault_corners(pointpos, lon, lat, verdepth, strike, dip, patchlen, patchwid)
-        #         else:
-        #             if pointpos in ("ul", "UL", "upper left", "upper_left"):
-        #                 lon, lat = self.xy2ll(x[-1][0][-1], y[-1][0][-1])
-        #                 verdepth = z[-1][0][-1]
-        #             # elif pointpos in ("ur", "UR"):
-        #             #     lon, lat = self.xy2ll(x[-1][1], y[-1][1])
-        #             _, temp = self._initialize_fault_corners(pointpos, lon, lat, verdepth, strike, dip, patchlen, patchwid)
-        #         x.append(temp["x"])
-        #         y.append(temp["y"])
-        #         z.append(temp["z"])
-        #         # TODO
-        #
-        # x, y, z = np.array(x), np.array(y), np.array(z)
-        #
-        # x = np.reshape(x, (m * 2, n * 2))
-        # y = np.reshape(y, (m * 2, n * 2))
-        # z = np.reshape(z, (m * 2, n * 2))
-        #
-        # return x, y, z
-
-
-        # xn = np.linspace(ul[0], ur[0], m)
-        # yn = np.linspace(ul[1], )
-
-    def plot_new(self, xyz):
-        import matplotlib.pyplot as plt
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.plot_surface(xyz[0], xyz[1], xyz[2], edgecolor='k', alpha=0.7)
-        ax.set_xlabel("X")
-        ax.set_ylabel("Y")
-        ax.set_zlabel("Z")
-        ax.set_zlim(xyz[2].min(), 0)
-
-        plt.show()
 
     def plot(self, verts):
         # x, y, z = np.array(x), np.array(y), np.array(z)
