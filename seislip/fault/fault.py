@@ -24,11 +24,10 @@ else:
     from ..seislip import GeoTrans
 
 # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-
 class Fault(GeoTrans):
     """Constructing a Fault object with four corner coordinates (and central/centroid point coordinates).
 
-    The object of this class would be used for mesh the fault plane into rectangle or triangle patches.
+    The object of this class would be used for meshing the fault plane into rectangle or triangle patches.
 
     Args:
         - name:                 Fault instance name
@@ -62,7 +61,7 @@ class Fault(GeoTrans):
         X:      along strike
         Y:      along opposite direction of dip
         Z:      normal direction the fault
-        Point position on fault plane, the origin of the fault coordinate system is bottom original point.
+        Point position on fault plane.
         "uo": upper original point,     "uc": upper center point,       "ue": upper end point
         "bo": bottom original point,    "bc": bottom center point,      "be": bottom end point
         "cc": centroid center point
@@ -87,16 +86,17 @@ class Fault(GeoTrans):
         Return:
             - None.
         """
-        # pointpos_list = ("uo",  "UO",  "upper origin",    "upper_origin",
-        #                  "uc",  "UC",  "upper center",    "upper_center",
-        #                  "ue",  "UE",  "upper end",       "upper_end",
-        #                  "bo",  "BO",  "bottom origin",   "bottom_origin"
-        #                  "bc",  "BC",  "bottom center",   "bottom_center",
-        #                  "be",  "BE",  "bottom end",      "bottom_end",
-        #                  "cc",  "CC",  "centroid center", "centroid_center")
+
+        pointpos_list = ("uo",  "UO",  "upper origin",    "upper_origin",
+                         "uc",  "UC",  "upper center",    "upper_center",
+                         "ue",  "UE",  "upper end",       "upper_end",
+                         "bo",  "BO",  "bottom origin",   "bottom_origin"
+                         "bc",  "BC",  "bottom center",   "bottom_center",
+                         "be",  "BE",  "bottom end",      "bottom_end",
+                         "cc",  "CC",  "centroid center", "centroid_center")
 
         # For now only support "uc"
-        pointpos_list = ("uc",  "UC",  "upper center",    "upper_center")
+        # pointpos_list = ("uc",  "UC",  "upper center",    "upper_center")
         if pointpos not in pointpos_list:
             raise ValueError("Please specify a right point position!")
         else:
@@ -107,6 +107,8 @@ class Fault(GeoTrans):
             self.width = width
 
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+    # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+
 
     def _initialize_fault(self, pointpos: str, lon, lat, verdepth, strike, dip, length, width):
         """Initialize a rectangle fault plane by calculating the corner or central points of the fault, based
@@ -137,7 +139,8 @@ class Fault(GeoTrans):
         cpl_width = (0 - projwidth * 1j) * np.exp(strike_comp * 1j)
         x, y = self.ll2xy(lon, lat)
 
-        if pointpos in ("ul", "UL", "upper left", "upper_left"):
+        # if pointpos in ("ul", "UL", "upper left", "upper_left"):
+        if pointpos in ("uo", "UO", "upper origin", "upper_origin", "ul", "UL", "upper left", "upper_left"):
             x_ul, y_ul, z_ul = x, y, verdepth
         elif pointpos in ("uc", "UC", "upper center", "upper_center"):
             x_uc, y_uc, z_uc = x, y, verdepth
@@ -254,9 +257,6 @@ class Fault(GeoTrans):
         ax.set_zlim(zmin, zmax)
 
         plt.show()
-
-
-
 
 
 # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-

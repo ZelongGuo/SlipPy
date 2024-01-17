@@ -783,40 +783,57 @@ Created on 21.07.23
 # plt.show()
 
 
+#
+# import math
+#
+# import matplotlib.pyplot as plt
+# import numpy as np
+#
+# from matplotlib.collections import PolyCollection
+#
+# # Fixing random state for reproducibility
+# np.random.seed(19680801)
+#
+#
+# def polygon_under_graph(x, y):
+#     """
+#     Construct the vertex list which defines the polygon filling the space under
+#     the (x, y) line graph. This assumes x is in ascending order.
+#     """
+#     return [(x[0], 0.), *zip(x, y), (x[-1], 0.)]
+#
+#
+# ax = plt.figure().add_subplot(projection='3d')
+#
+# x = np.linspace(0., 10., 31)
+# lambdas = range(1, 9)
+#
+# # verts[i] is a list of (x, y) pairs defining polygon i.
+# gamma = np.vectorize(math.gamma)
+# verts = [polygon_under_graph(x, l**x * np.exp(-l) / gamma(x + 1)) for l in lambdas]
+# facecolors = plt.colormaps['viridis_r'](np.linspace(0, 1, len(verts)))
+#
+# poly = PolyCollection(verts, facecolors=facecolors, alpha=.7)
+# ax.add_collection3d(poly, zs=lambdas, zdir='y')
+#
+# ax.set(xlim=(0, 10), ylim=(1, 9), zlim=(0, 0.35),
+#        xlabel='x', ylabel=r'$\lambda$', zlabel='probability')
+#
+# plt.show()
 
-import math
 
-import matplotlib.pyplot as plt
-import numpy as np
+pointpos_list = (("uo", "UO", "upper origin", "upper_origin"),
+                 ("uc", "UC", "upper center", "upper_center"),
+                 ("ue", "UE", "upper end", "upper_end"),
+                 ("bo", "BO", "bottom origin", "bottom_origin"),
+                 ("bc", "BC", "bottom center", "bottom_center"),
+                 ("be", "BE", "bottom end", "bottom_end"),
+                 ("cc", "CC", "centroid center", "centroid_center"))
 
-from matplotlib.collections import PolyCollection
-
-# Fixing random state for reproducibility
-np.random.seed(19680801)
-
-
-def polygon_under_graph(x, y):
-    """
-    Construct the vertex list which defines the polygon filling the space under
-    the (x, y) line graph. This assumes x is in ascending order.
-    """
-    return [(x[0], 0.), *zip(x, y), (x[-1], 0.)]
-
-
-ax = plt.figure().add_subplot(projection='3d')
-
-x = np.linspace(0., 10., 31)
-lambdas = range(1, 9)
-
-# verts[i] is a list of (x, y) pairs defining polygon i.
-gamma = np.vectorize(math.gamma)
-verts = [polygon_under_graph(x, l**x * np.exp(-l) / gamma(x + 1)) for l in lambdas]
-facecolors = plt.colormaps['viridis_r'](np.linspace(0, 1, len(verts)))
-
-poly = PolyCollection(verts, facecolors=facecolors, alpha=.7)
-ax.add_collection3d(poly, zs=lambdas, zdir='y')
-
-ax.set(xlim=(0, 10), ylim=(1, 9), zlim=(0, 0.35),
-       xlabel='x', ylabel=r'$\lambda$', zlabel='probability')
-
-plt.show()
+# For now only support "uc"
+# pointpos_list = ("uc",  "UC",  "upper center",    "upper_center")
+a = "uo"
+if a not in pointpos_list:
+    raise ValueError("Please specify a right point position!")
+else:
+    print("a is in the list!")
