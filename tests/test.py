@@ -822,18 +822,27 @@ Created on 21.07.23
 # plt.show()
 
 
-pointpos_list = (("uo", "UO", "upper origin", "upper_origin"),
-                 ("uc", "UC", "upper center", "upper_center"),
-                 ("ue", "UE", "upper end", "upper_end"),
-                 ("bo", "BO", "bottom origin", "bottom_origin"),
-                 ("bc", "BC", "bottom center", "bottom_center"),
-                 ("be", "BE", "bottom end", "bottom_end"),
-                 ("cc", "CC", "centroid center", "centroid_center"))
+# pointpos_list = (("uo", "UO", "upper origin", "upper_origin"),
+#                  ("uc", "UC", "upper center", "upper_center"),
+#                  ("ue", "UE", "upper end", "upper_end"),
+#                  ("bo", "BO", "bottom origin", "bottom_origin"),
+#                  ("bc", "BC", "bottom center", "bottom_center"),
+#                  ("be", "BE", "bottom end", "bottom_end"),
+#                  ("cc", "CC", "centroid center", "centroid_center"))
+#
+# # For now only support "uc"
+# # pointpos_list = ("uc",  "UC",  "upper center",    "upper_center")
+# a = "uo"
+# if a not in pointpos_list:
+#     raise ValueError("Please specify a right point position!")
+# else:
+#     print("a is in the list!")
 
-# For now only support "uc"
-# pointpos_list = ("uc",  "UC",  "upper center",    "upper_center")
-a = "uo"
-if a not in pointpos_list:
-    raise ValueError("Please specify a right point position!")
-else:
-    print("a is in the list!")
+
+a = (1, 2, 3)
+b = (4, 5, 6)
+c = (7, 8, 9)
+
+d = [a, b, c]
+e = [d]
+

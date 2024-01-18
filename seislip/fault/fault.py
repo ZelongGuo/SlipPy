@@ -11,6 +11,7 @@ Created on 31.12.23
 __author__ = "Zelong Guo"
 
 import sys
+import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -53,6 +54,8 @@ class Fault(GeoTrans):
         self.mutifaults = None  # TODO: multifaults is a list contain multiple fault objects,
         # TODO: if there is multiple faults, then delete the above attributes
 
+    # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+
     def initialize_fault(self, pointpos: str, lon, lat, verdepth, strike, dip, length, width):
         """Initialize a rectangle fault plane by specifying a corner or central point of the fault.
 
@@ -73,7 +76,7 @@ class Fault(GeoTrans):
 
         Args:
             - pointpos:       the position of the specified fault point in the fault coordinate system:
-                              "uo", "uc", "ue", "bo", "bc", "be", "cc". "uc" is strongly recommended.
+                              "uo", "uc", "ue", "bo", "bc", "be", "cc".
             - lon:            longitude of the specified point, degree
             - lat:            latitude of the specified point, degree
             - verdepth:       vertical depth of the specified point, km. Depth should
@@ -90,21 +93,157 @@ class Fault(GeoTrans):
         pointpos_list = ("uo",  "UO",  "upper origin",    "upper_origin",
                          "uc",  "UC",  "upper center",    "upper_center",
                          "ue",  "UE",  "upper end",       "upper_end",
-                         "bo",  "BO",  "bottom origin",   "bottom_origin"
+                         "bo",  "BO",  "bottom origin",   "bottom_origin",
                          "bc",  "BC",  "bottom center",   "bottom_center",
                          "be",  "BE",  "bottom end",      "bottom_end",
                          "cc",  "CC",  "centroid center", "centroid_center")
 
-        # For now only support "uc"
-        # pointpos_list = ("uc",  "UC",  "upper center",    "upper_center")
         if pointpos not in pointpos_list:
             raise ValueError("Please specify a right point position!")
         else:
-            self.origin = (pointpos, (lon, lat, verdepth))
+            # calculate fault corner coordinates
+            fault_corners = self.__calc_corner_coordinates(pointpos, lon, lat, verdepth, strike, dip, length, width)
+            # check if the fault expose to surface, and return the upper center point
+            lon_uc, lat_uc, depth_uc = self.__check_breach_surface(fault_corners, strike, dip)
+            self.origin = ("upper center", (lon_uc, lat_uc, depth_uc))
             self.strike = strike
             self.dip = dip
             self.length = length
             self.width = width
+
+    # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+    def extend_to_surface(self):
+        pass
+
+    # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+
+    def __check_breach_surface(self, fault_corners, strike, dip):
+        """Check the fault breach to the surface or not. If it does, then assign the depth of upper edge
+        to 0 (surface) automatically. If it does not, do nothing. Finally, we return the lon, lat and depth of the
+        upper center point of the fault.
+        The depth should be negative values.
+
+        Args:
+            - fault_corners:            a dict containing fault corners coordinates
+
+        Return:
+            - lon, lat and depth of center point on the fault upper edge
+        """
+
+        # uo = fault_corners["upper origin"]
+        uc = fault_corners["upper center"]
+        # ue = fault_corners["upper end"]
+
+        x_uc, y_uc, z_uc = uc[0], uc[1], uc[2]
+        # if the upper fault edge breaches to the surface:
+        if z_uc > 0:
+            warnings.warn("Warning: The fault has breached to the surface! "
+                          "We are now setting the upper edge depth to 0.")
+            # complementary angle of strike
+            strike_comp = np.radians(90 - strike)
+            dip = np.radians(dip)
+            exposed_surface_wid = z_uc / np.tan(dip)
+            cpl_exposed_surface_wid = (0 - exposed_surface_wid * 1j) * np.exp(strike_comp * 1j)
+
+            surface_xy_uc = (x_uc + y_uc * 1j) + cpl_exposed_surface_wid
+            surface_x_uc, surface_y_uc, surface_z_uc = surface_xy_uc.real, surface_xy_uc.imag, 0
+            surface_lon_uc, surface_lat_uc = self.xy2ll(surface_x_uc, surface_y_uc)
+
+            return surface_lon_uc, surface_lat_uc, surface_z_uc
+        else:
+            lon_uc, lat_uc = self.xy2ll(x_uc, y_uc)
+            return lon_uc, lat_uc, z_uc
+
+    # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+
+    def __calc_corner_coordinates(self, pointpos: str, lon, lat, verdepth, strike, dip, length, width):
+        """Calculate the 3D UTM coordinates of corners or central points on fault, based on one point given.
+
+        Args:
+            - pointpos:       the position of the specified fault point in the fault coordinate system:
+                              "uo", "uc", "ue", "bo", "bc", "be", "cc". "uc" is strongly recommended.
+            - lon:            longitude of the specified point, degree
+            - lat:            latitude of the specified point, degree
+            - verdepth:       vertical depth of the specified point, km. Depth should
+                              specified as Negative value.
+            - strike:         strike angle of the fault, degree
+            - dip:            dip angle of the fault, degree
+            - width:          width along the fault dip direction, km
+            - length:         length along the fault strike direction, km
+
+        Return:
+            - fault_corners:    3D UTM coordinates of corners anf central points of the fault plane
+        """
+        # complementary angle of strike
+        strike_comp = np.radians(90 - strike)
+        dip = np.radians(dip)
+        projwidth = width * np.cos(dip)
+
+        cpl_length = (length + 0j) * np.exp(strike_comp * 1j)
+        cpl_width = (0 - projwidth * 1j) * np.exp(strike_comp * 1j)
+        x, y = self.ll2xy(lon, lat)
+
+        # if pointpos in ("ul", "UL", "upper left", "upper_left"):
+        if pointpos in ("uo", "UO", "upper origin", "upper_origin"):
+            x_uo, y_uo, z_uo = x, y, verdepth
+        elif pointpos in ("uc", "UC", "upper center", "upper_center"):
+            x_uc, y_uc, z_uc = x, y, verdepth
+            xy_uo = (x_uc + y_uc * 1j) - cpl_length / 2
+            x_uo, y_uo, z_uo = xy_uo.real, xy_uo.imag, verdepth
+        elif pointpos in ("ue", "UE", "upper end", "upper_end"):
+            x_ue, y_ue, z_ue = x, y, verdepth
+            xy_uo = (x_ue + y_ue * 1j) - cpl_length
+            x_uo, y_uo, z_uo = xy_uo.real, xy_uo.imag, verdepth
+        elif pointpos in ("be", "BE", "bottom end", "bottom_end"):
+            x_be, y_be, z_be = x, y, verdepth
+            xy_uo = (x_be + y_be * 1j) - cpl_length - cpl_width
+            x_uo, y_uo, z_uo = xy_uo.real, xy_uo.imag, verdepth + width * np.sin(dip)
+        elif pointpos in ("bc", "BC", "bottom center", "bottom_center"):
+            x_bc, y_bc, z_bc = x, y, verdepth
+            xy_uo = (x_bc + y_bc * 1j) - cpl_length / 2 - cpl_width
+            x_uo, y_uo, z_uo = xy_uo.real, xy_uo.imag, verdepth + width * np.sin(dip)
+        elif pointpos in ("bo", "BO", "bottom origin", "bottom_origin"):
+            x_bo, y_bo, z_bo = x, y, verdepth
+            xy_uo = (x_bo + y_bo * 1j) - cpl_width
+            x_uo, y_uo, z_uo = xy_uo.real, xy_uo.imag, verdepth + width * np.sin(dip)
+        elif pointpos in ("cc", "CC", "centroid center", "centroid_center"):
+            x_cc, y_cc, z_cc = x, y, verdepth
+            xy_uo = (x_cc + y_cc * 1j) - cpl_width / 2 - cpl_length / 2
+            x_uo, y_uo, z_uo = xy_uo.real, xy_uo.imag, verdepth + width * np.sin(dip) / 2
+        else:
+            raise ValueError("Please specify a correct point position VALUE!")
+
+        # upper center point
+        xy_uc = (x_uo + y_uo * 1j) + cpl_length / 2
+        x_uc, y_uc, z_uc = xy_uc.real, xy_uc.imag, z_uo
+        # upper right point
+        xy_ue = (x_uo + y_uo * 1j) + cpl_length
+        x_ue, y_ue, z_ue = xy_ue.real, xy_ue.imag, z_uo
+        # bottom right point
+        xy_be = (x_ue + y_ue * 1j) + cpl_width
+        x_be, y_be, z_be = xy_be.real, xy_be.imag, z_uo - width * np.sin(dip)
+        # bottom center point
+        xy_bc = (x_be + y_be * 1j) - cpl_length / 2
+        x_bc, y_bc, z_bc = xy_bc.real, xy_bc.imag, z_uo - width * np.sin(dip)
+        # bottom left point
+        xy_bo = (x_bc + y_bc * 1j) - cpl_length / 2
+        x_bo, y_bo, z_bo = xy_bo.real, xy_bo.imag, z_uo - width * np.sin(dip)
+        # fault center point
+        x_cc, y_cc, z_cc = (x_uc + x_bc) / 2, (y_uc + y_bc) / 2, (z_uc + z_bc) / 2
+
+        fault_corners = {
+            "upper origin":       (x_uo, y_uo, z_uo),
+            "upper center":     (x_uc, y_uc, z_uc),
+            "upper end":      (x_ue, y_ue, z_ue),
+            "bottom origin":      (x_bo, y_bo, z_bo),
+            "bottom center":    (x_bc, y_bc, z_bc),
+            "bottom end":     (x_be, y_be, z_be),
+            "centroid center":  (x_cc, y_cc, z_cc),
+        }
+
+        return fault_corners
+
+
 
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
@@ -116,8 +255,8 @@ class Fault(GeoTrans):
 
         Args:
             - pointpos:       the position of the specified/original point:
-                              "ul": upper left point,  "uc": upper center point,  "ur": upper right point
-                              "bl": bottom left point, "bc": bottom center point, "br": bottom right point
+                              "uo": upper origin point,  "uc": upper center point,  "ue": upper end point
+                              "bo": bottom origin point, "bc": bottom center point, "be": bottom end point
             - lon:            longitude of the central point on the upper edge of the fault, degree
             - lat:            latitude of the central point on the upper edge of the fault, degree
             - verdepth:       vertical depth of the central point on the upper edge of the fault, km. Depth should
@@ -140,61 +279,61 @@ class Fault(GeoTrans):
         x, y = self.ll2xy(lon, lat)
 
         # if pointpos in ("ul", "UL", "upper left", "upper_left"):
-        if pointpos in ("uo", "UO", "upper origin", "upper_origin", "ul", "UL", "upper left", "upper_left"):
-            x_ul, y_ul, z_ul = x, y, verdepth
+        if pointpos in ("uo", "UO", "upper origin", "upper_origin"):
+            x_uo, y_uo, z_uo = x, y, verdepth
         elif pointpos in ("uc", "UC", "upper center", "upper_center"):
             x_uc, y_uc, z_uc = x, y, verdepth
-            xy_ul = (x_uc + y_uc * 1j) - cpl_length / 2
-            x_ul, y_ul, z_ul = xy_ul.real, xy_ul.imag, verdepth
-        elif pointpos in ("ur", "UR", "upper right", "upper_right"):
-            x_ur, y_ur, z_ur = x, y, verdepth
-            xy_ul = (x_ur + y_ur * 1j) - cpl_length
-            x_ul, y_ul, z_ul = xy_ul.real, xy_ul.imag, verdepth
-        elif pointpos in ("br", "BR", "bottom right", "bottom_right"):
-            x_br, y_br, z_br = x, y, verdepth
-            xy_ul = (x_br + y_br * 1j) - cpl_length - cpl_width
-            x_ul, y_ul, z_ul = xy_ul.real, xy_ul.imag, verdepth + width * np.sin(dip)
+            xy_uo = (x_uc + y_uc * 1j) - cpl_length / 2
+            x_uo, y_uo, z_uo = xy_uo.real, xy_uo.imag, verdepth
+        elif pointpos in ("ue", "UE", "upper end", "upper_end"):
+            x_ue, y_ue, z_ue = x, y, verdepth
+            xy_uo = (x_ue + y_ue * 1j) - cpl_length
+            x_uo, y_uo, z_uo = xy_uo.real, xy_uo.imag, verdepth
+        elif pointpos in ("be", "BE", "bottom end", "bottom_end"):
+            x_be, y_be, z_be = x, y, verdepth
+            xy_uo = (x_be + y_be * 1j) - cpl_length - cpl_width
+            x_uo, y_uo, z_uo = xy_uo.real, xy_uo.imag, verdepth + width * np.sin(dip)
         elif pointpos in ("bc", "BC", "bottom center", "bottom_center"):
             x_bc, y_bc, z_bc = x, y, verdepth
-            xy_ul = (x_bc + y_bc * 1j) - cpl_length / 2 - cpl_width
-            x_ul, y_ul, z_ul = xy_ul.real, xy_ul.imag, verdepth + width * np.sin(dip)
-        elif pointpos in ("bl", "BL", "bottom left", "bottom_left"):
-            x_bl, y_bl, z_bl = x, y, verdepth
-            xy_ul = (x_bl + y_bl * 1j) - cpl_width
-            x_ul, y_ul, z_ul = xy_ul.real, xy_ul.imag, verdepth + width * np.sin(dip)
+            xy_uo = (x_bc + y_bc * 1j) - cpl_length / 2 - cpl_width
+            x_uo, y_uo, z_uo = xy_uo.real, xy_uo.imag, verdepth + width * np.sin(dip)
+        elif pointpos in ("bo", "BO", "bottom origin", "bottom_origin"):
+            x_bo, y_bo, z_bo = x, y, verdepth
+            xy_uo = (x_bo + y_bo * 1j) - cpl_width
+            x_uo, y_uo, z_uo = xy_uo.real, xy_uo.imag, verdepth + width * np.sin(dip)
         elif pointpos in ("cc", "CC", "centroid center", "centroid_center"):
             x_cc, y_cc, z_cc = x, y, verdepth
-            xy_ul = (x_cc + y_cc * 1j) - cpl_width / 2 - cpl_length / 2
-            x_ul, y_ul, z_ul = xy_ul.real, xy_ul.imag, verdepth + width * np.sin(dip) / 2
+            xy_uo = (x_cc + y_cc * 1j) - cpl_width / 2 - cpl_length / 2
+            x_uo, y_uo, z_uo = xy_uo.real, xy_uo.imag, verdepth + width * np.sin(dip) / 2
         else:
             raise ValueError("Please specify a correct point position VALUE!")
 
         # upper center point
-        xy_uc = (x_ul + y_ul * 1j) + cpl_length / 2
-        x_uc, y_uc, z_uc = xy_uc.real, xy_uc.imag, z_ul
+        xy_uc = (x_uo + y_uo * 1j) + cpl_length / 2
+        x_uc, y_uc, z_uc = xy_uc.real, xy_uc.imag, z_uo
         # upper right point
-        xy_ur = (x_ul + y_ul * 1j) + cpl_length
-        x_ur, y_ur, z_ur = xy_ur.real, xy_ur.imag, z_ul
+        xy_ue = (x_uo + y_uo * 1j) + cpl_length
+        x_ue, y_ue, z_ue = xy_ue.real, xy_ue.imag, z_uo
         # bottom right point
-        xy_br = (x_ur + y_ur * 1j) + cpl_width
-        x_br, y_br, z_br = xy_br.real, xy_br.imag, z_ul - width * np.sin(dip)
+        xy_be = (x_ue + y_ue * 1j) + cpl_width
+        x_be, y_be, z_be = xy_be.real, xy_be.imag, z_uo - width * np.sin(dip)
         # bottom center point
-        xy_bc = (x_br + y_br * 1j) - cpl_length / 2
-        x_bc, y_bc, z_bc = xy_bc.real, xy_bc.imag, z_ul - width * np.sin(dip)
+        xy_bc = (x_be + y_be * 1j) - cpl_length / 2
+        x_bc, y_bc, z_bc = xy_bc.real, xy_bc.imag, z_uo - width * np.sin(dip)
         # bottom left point
-        xy_bl = (x_bc + y_bc * 1j) - cpl_length / 2
-        x_bl, y_bl, z_bl = xy_bl.real, xy_bl.imag, z_ul - width * np.sin(dip)
+        xy_bo = (x_bc + y_bc * 1j) - cpl_length / 2
+        x_bo, y_bo, z_bo = xy_bo.real, xy_bo.imag, z_uo - width * np.sin(dip)
         # fault center point
         x_cc, y_cc, z_cc = (x_uc + x_bc) / 2, (y_uc + y_bc) / 2, (z_uc + z_bc) / 2
 
         fault = {
-            "upper left":       [x_ul, y_ul, z_ul],
-            "upper center":     [x_uc, y_uc, z_uc],
-            "upper right":      [x_ur, y_ur, z_ur],
-            "bottom left":      [x_bl, y_bl, z_bl],
-            "bottom center":    [x_bc, y_bc, z_bc],
-            "bottom right":     [x_br, y_br, z_br],
-            "centroid center":  [x_cc, y_cc, z_cc],
+            "upper left":       (x_uo, y_uo, z_uo),
+            "upper center":     (x_uc, y_uc, z_uc),
+            "upper right":      (x_ue, y_ue, z_ue),
+            "bottom left":      (x_bo, y_bo, z_bo),
+            "bottom center":    (x_bc, y_bc, z_bc),
+            "bottom right":     (x_be, y_be, z_be),
+            "centroid center":  (x_cc, y_cc, z_cc),
             "length":           length,
             "width":            width
         }
@@ -202,17 +341,11 @@ class Fault(GeoTrans):
         fault_corner = [
             [fault["upper left"], fault["upper right"], fault["bottom right"], fault["bottom left"]]
         ]
-        # fault_corner = np.array(fault_corner)
 
-        # fault_corner = {
-        #     "x":        [[x_ul, x_ur], [x_bl, x_br]],
-        #     "y":        [[y_ul, y_ur], [y_bl, y_br]],
-        #     "z":        [[z_ul, z_ur], [z_bl, z_br]],
-        # }
-
-        # temp = self.xy2ll(x_cc, y_cc)
 
         return fault, fault_corner
+
+
 
     def read_from_trace(self):
         pass
@@ -265,13 +398,8 @@ if __name__ == "__main__":
     fault = Fault("flt", 44.28, 35.47)
     # patch1, patch_corner1 = fault.initialize_planar_fault(lon_uc=44.344, lat_uc=35.603, verdepth_uc=3, strike=10, dip=45, length=80, width=50)
     patch1, patch_corner1 = fault._initialize_fault(pointpos="upper center", lon=44.344, lat=35.603, verdepth=-3, strike=10, dip=45, length=80, width=50)
-    fault.plot(patch_corner1)
-    # verts = fault.mesh_planar_fault(pointpos="upper left", lon=44.344, lat=35.603, verdepth=-3, strike=10, dip=45, length=80, width=50, patchlen=2, patchwid=2)
-
-    #
-    #
-
     # fault.plot(patch_corner1)
-    # fault.plot(verts)
+
+
 
 
