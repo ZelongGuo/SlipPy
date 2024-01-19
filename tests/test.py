@@ -838,11 +838,30 @@ Created on 21.07.23
 # else:
 #     print("a is in the list!")
 
+#
+# a = (1, 2, 3)
+# b = (4, 5, 6)
+# c = (7, 8, 9)
+#
+# d = [a, b, c]
+# e = [d]
 
-a = (1, 2, 3)
-b = (4, 5, 6)
-c = (7, 8, 9)
+def split_line_segment(length, sublen, ratio, increasing=True):
+    lengths = [sublen * ratio**i for i in range(int(length / sublen))]
+    if not increasing:
+        lengths = lengths[::-1]
 
-d = [a, b, c]
-e = [d]
+    starting_coordinates = [(sum(lengths[:i]), 0) for i in range(len(lengths))]
 
+    return lengths, starting_coordinates
+
+# 示例调用
+length_of_line = 20
+subsegment_length = 2
+growth_ratio = 1.5
+is_increasing = True
+
+lengths, starting_coords = split_line_segment(length_of_line, subsegment_length, growth_ratio, is_increasing)
+
+for i, (length, coords) in enumerate(zip(lengths, starting_coords), 1):
+    print(f"Subsegment {i}: Length = {length}, Starting Coordinates = {coords}")
