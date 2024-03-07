@@ -21,11 +21,17 @@ import struct
 import numpy as np
 from scipy.constants import c
 import matplotlib.pyplot as plt
+import warnings
 
 
 # SlipPy libs
-from ..seislip import GeoTrans
-from ..utils.quadtree import QTree
+if __name__ == "__main__":
+    sys.path.append("../")
+    from seislip.seislip import GeoTrans
+    from seislip.utils.quadtree import QTree
+else:
+    from ..seislip import GeoTrans
+    from ..utils.quadtree import QTree
 
 
 # Insar Class
@@ -194,6 +200,94 @@ class InSAR(GeoTrans):
             print("Error: cannot open the image file, please check the file path or the parameters!")
 
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+    def read_from_xyz(self, xyz_file: str, interval_fact: int):
+        """Read InSAR image from .xyz files.
+
+        Args:
+            - xyz_file     :        the InSAR xyz (table) file, should be 3 columns, comments starts with '#',
+                                    mind the unit of deformation
+            - interval_fact:        the interval factor, default is 1 and should be grater than 1. The new resolution
+                                    of the data would be: interval_fact * maximum  resolution of the .xyz file.
+        """
+
+        # interval_fact should be grater than 1, that means this function cannot do interpolation.
+
+        # NOTE: it would be better do not read the xyz file directly because it is not easy to get the unit...
+        pass
+
+    # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+    def read_from_grd(self, **kwargs):
+        """Read InSAR image from .grd file, it should be a netCDF file.
+
+        Args:
+            - kwargs:           the key should be: los, azi and/or inc, the value are the corresponding path.
+        """
+        from netCDF4 import Dataset
+
+        # initialize the self.data to an empty dict
+        self.data = {}
+
+        for grd, grd_path in kwargs.items():
+            if grd not in ("los", "azi", "azimuth", "inc", "incidence"):
+                raise ValueError(f"{grd} in kwargs is not los, inc or azi !!!")
+
+            # open and read the files
+            dataset = Dataset(grd_path, "r", format="NETCDF4")
+            data = dataset.variables
+            # dimensions = dataset.dimensions
+
+            if "lon" in data and "lat" in data:
+                print("The dimensions are longitude and latitude.")
+                lon = np.array(data['lon'][:])
+                lat = np.array(data['lat'][:])
+                Lons, Lats = np.meshgrid(lon, lat)   # the unit should be degrees
+                utm_x, utm_y = self.ll2xy(Lons, Lats)  # the unit should be km
+                self.data.update({
+                    "lon":          {"value": Lons, "unit": "degree"},
+                    "lat":          {"value": Lats, "unit": "degree"},
+                    "x":            {"value": utm_x, "unit": "km"},
+                    "y":            {"value": utm_y, "unit": "km"}
+                })
+            elif "x" in data and "y" in data:
+                print("The dimensions are x and y.")
+                x = np.array(data['x'][:])
+                y = np.array(data['y'][:])
+                x, y = np.meshgrid(x, y)
+                # NOTE: do not know whether it's utm or the zone number, so it is an unknown Catersian coordinate
+                if hasattr(data["x"], "units") and hasattr(data["y"], "units"):
+                    x_unit = data["x"].units
+                    y_unit = data["y"].units
+                else:
+                    warnings.warn("x and y do not have units!")
+                    x_unit, y_unit = None, None
+                self.data.update({
+                    "x":          {"value": x, "unit": x_unit},
+                    "y":          {"value": y, "unit": y_unit}
+                })
+            else:
+                raise ValueError(f"The dimensions of the given grd {grd} file are neither lonlat nor xy!")
+
+            # Deal with the Unit of z
+            if hasattr(data["z"], "units"):
+                z_unit = data["z"].units
+            else:
+                warnings.warn("z does not have unit!")
+                z_unit = None
+
+            if grd == "los":
+                los = np.array(data["z"][:])
+                self.data.update({"los": {"value": los, "unit": z_unit}})
+            elif grd == "azi":
+                azi = np.array(data["z"][:])
+                self.data.update({"azi": {"value": azi, "unit": z_unit}})
+            else:
+                inc = np.array(data["z"][:])
+                self.data.update({"inc": {"value": inc, "unit": z_unit}})
+
+
+
+
+    # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
     def _phase2los(self, phase: Union[float, np.ndarray], satellite: str) -> Union[float, np.ndarray]:
         """Converting InSAR phase to InSAR line-of-sight (los) disp.
 
@@ -326,5 +420,10 @@ class InSAR(GeoTrans):
 
 # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
 if __name__ == "__main__":
-    pass
+
+    t072 = InSAR("T072", 44.28, 35.47, "WGS84")
+    t072_wang = "/misc/zs7/Zelong/2017_Iraq-Iran_EQ/Postseismic_InSAR_WangKang/dLOS_Sentinel-1/DES79/dlos_20181125.grd"
+    t072.read_from_grd(los=t072_wang)
+
+
 
