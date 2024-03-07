@@ -108,7 +108,8 @@ class Fault(GeoTrans):
             raise ValueError("Please specify a right point position!")
         else:
             # calculate fault corner coordinates
-            fault_corners, _ = self.__get_corner_vertices(pointpos, {"LL": (lon, lat, verdepth)}, strike, dip, length, width)
+            fault_corners, _, _ = self.__get_corner_vertices(pointpos, {"LL": (lon, lat, verdepth)}, strike, dip, length, width)
+            # self.ccp = ccp
             self.strike = strike
             self.dip = dip
             self.length = length
@@ -137,7 +138,7 @@ class Fault(GeoTrans):
 
             surface_xy_uc = (x_uc + y_uc * 1j) - cpl_wid_required
             surface_utmx_uc, surface_utmy_uc, surface_utmz_uc = surface_xy_uc.real, surface_xy_uc.imag, 0
-            _, fault_verts = self.__get_corner_vertices("upper center", {"UTM": (surface_utmx_uc, surface_utmy_uc, surface_utmz_uc)},
+            _, fault_verts, _ = self.__get_corner_vertices("upper center", {"UTM": (surface_utmx_uc, surface_utmy_uc, surface_utmz_uc)},
                                                         self.strike, self.dip, self.length, self.width)
 
             self.ucp = {"upper center": (surface_utmx_uc, surface_utmy_uc, surface_utmz_uc)}
@@ -272,9 +273,9 @@ class Fault(GeoTrans):
         fault_verts = [
             [(x_uo, y_uo, z_uo), (x_ue, y_ue, z_ue), (x_be, y_be, z_be), (x_bo, y_bo, z_bo)]
         ]
-        # fault_centroid = (x_cc, y_cc, z_cc)
+        fault_centroid = (x_cc, y_cc, z_cc)
 
-        return fault_corners, fault_verts  # fault_centroid
+        return fault_corners, fault_verts, fault_centroid
 
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
     def __check_breach_surface(self, fault_corners, strike, dip, length, width):
@@ -310,13 +311,13 @@ class Fault(GeoTrans):
             surface_xy_uc = (x_uc + y_uc * 1j) + cpl_exposed_surface_wid
             surface_utmx_uc, surface_utmy_uc, surface_utmz_uc = surface_xy_uc.real, surface_xy_uc.imag, 0
             width = width - z_uc / np.sin(np.radians(dip))
-            _, fault_verts = self.__get_corner_vertices("upper center", {"UTM": (surface_utmx_uc, surface_utmy_uc, surface_utmz_uc)},
+            _, fault_verts, _ = self.__get_corner_vertices("upper center", {"UTM": (surface_utmx_uc, surface_utmy_uc, surface_utmz_uc)},
                                                         strike, dip, length, width)
 
             return (surface_utmx_uc, surface_utmy_uc, surface_utmz_uc), fault_verts, width
 
         else:
-            _, fault_verts = self.__get_corner_vertices("upper center", {"UTM": (x_uc, y_uc, z_uc)}, strike, dip, length, width)
+            _, fault_verts, _ = self.__get_corner_vertices("upper center", {"UTM": (x_uc, y_uc, z_uc)}, strike, dip, length, width)
             print('+-' * 50)
             print("The fault does not reach to the surface yet!")
             print('+-' * 50)
@@ -376,14 +377,14 @@ class Fault(GeoTrans):
 # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
 if __name__ == "__main__":
 
-    fault = Fault("flt", 44.28, 35.47)
+    fault = Fault("fault1", 44.28, 35.47)
     # patch1, patch_corner1 = fault.initialize_planar_fault(lon_uc=44.344, lat_uc=35.603, verdepth_uc=3, strike=10, dip=45, length=80, width=50)
-    fault.initialize_fault(pointpos="upper center", lon=44.344, lat=35.603, verdepth=-15, strike=50, dip=90, length=80, width=50)
-    # fault.plot(fault.patch_verts)
-
-    fault.extend_to_surface()
-    fault.construct_rect_patches(sublength=2, subwidth=2, str_vary_fct=1.1, dip_vary_fct=1.1, verbose=False)
+    fault.initialize_fault(pointpos="upper center", lon=44.344, lat=35.603, verdepth=-15, strike=50, dip=45, length=80, width=50)
     fault.plot(fault.patch_verts)
+
+    # fault.extend_to_surface()
+    # fault.construct_rect_patches(sublength=3, subwidth=3, str_vary_fct=1.2, dip_vary_fct=1.2, verbose=False)
+    # fault.plot(fault.patch_verts)
 
 
 
