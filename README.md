@@ -1,5 +1,6 @@
 # SeiSlip 
 > update: 2023-06-09 23:43  
+> Zelong Guo, @ Potsdam, zelong.guo@outlook.com
 
 
 Cartesian and Fault Coordinate System:
@@ -12,5 +13,7 @@ Cartesian and Fault Coordinate System:
     color: #666;
     padding: 2px;"> Figure 1. The definition of cartesian and fault coordinate systems.  </div>
 </center>
+
+
 
 
