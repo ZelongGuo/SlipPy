@@ -165,6 +165,8 @@ class InSAR(GeoTrans):
             # lon and lat
             lats = np.linspace(corner_lat, corner_lat + (azimuth_lines - 1) * post_lat, azimuth_lines)
             lons = np.linspace(corner_lon, corner_lon + (range_samples - 1) * post_lon, range_samples)
+            # Lons and Lats are 2-D matrix, Note the origin should be upper left, so Lats should grow small from top to bottom
+            # zelong, 08.03.2024
             Lons, Lats = np.meshgrid(lons, lats)
             Lons, Lats = Lons[::downsample, ::downsample], Lats[::downsample, ::downsample]
             # utm
@@ -218,6 +220,7 @@ class InSAR(GeoTrans):
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
     def read_from_grd(self, **kwargs):
         """Read InSAR image from .grd file, it should be a netCDF file.
+        Example: t072.read_from_grd(los="./los.grd", inc="./inc.grd", azi="./azi.grd")
 
         Args:
             - kwargs:           the key should be: los, azi and/or inc, the value are the corresponding path.
@@ -240,6 +243,13 @@ class InSAR(GeoTrans):
                 print("The dimensions are longitude and latitude.")
                 lon = np.array(data['lon'][:])
                 lat = np.array(data['lat'][:])
+                # Lons should grow big from left to right, because we take the origin of the 2-D matrix to upper left
+                # zelong, 08.03.2024
+                if lon[0] > lon[-1]:
+                    lon = np.flip(lon)
+                # Lats should grow small from top to bottom, because we take the origin of the 2-D matrix to upper left
+                if lat[0] < lat[-1]:
+                    lat = np.flip(lat)
                 Lons, Lats = np.meshgrid(lon, lat)   # the unit should be degrees
                 utm_x, utm_y = self.ll2xy(Lons, Lats)  # the unit should be km
                 self.data.update({
@@ -276,16 +286,17 @@ class InSAR(GeoTrans):
 
             if grd == "los":
                 los = np.array(data["z"][:])
+                # default origin is lower, we change it to upper for plotting
+                los = np.flipud(los)
                 self.data.update({"los": {"value": los, "unit": z_unit}})
             elif grd == "azi":
                 azi = np.array(data["z"][:])
+                azi = np.flipud(azi)
                 self.data.update({"azi": {"value": azi, "unit": z_unit}})
             else:
-                inc = np.array(data["z"][:])
+                inc = np.array(data["z"][:]).transpose()
+                inc = np.flipud(inc)
                 self.data.update({"inc": {"value": inc, "unit": z_unit}})
-
-
-
 
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
     def _phase2los(self, phase: Union[float, np.ndarray], satellite: str) -> Union[float, np.ndarray]:
@@ -317,7 +328,7 @@ class InSAR(GeoTrans):
 
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
     def dsm_quadtree(self, mindim: int, maxdim: int, std_threshold: float, fraction: float = 0.3,
-                     key: str = "los",  proj: str = "utm"):
+                     key: str = "los",  proj: str = "geo"):
         """Downsampling InSAR images (los deformation) with quadtree method.
 
         Args:
@@ -348,12 +359,78 @@ class InSAR(GeoTrans):
         self.data_dsm = qtll
 
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+    def mask(self, mask: list, key: str="los", proj: str="geo"):
+        """Masking a specific area of the InSAR image, return the masked area and area after masking.
+        Only suit for a rectangle area.
+
+        Args:
+            - mask:                         A list or tuple of the AOI, [[start_point_x, start_point_y], [x_width, y_height]],
+                                            positive or negative values for x_width and y_width matter.
+            - proj:                         Projection, "geo" or "utm"
+
+        Returns:
+            - after_mask_area
+        """
+
+        import copy
+        mask = np.array(mask)
+
+        start_point_x0, start_point_y0 = mask[0][0], mask[0][1]
+        x_width, y_width = mask[1][0], mask[1][1]
+        end_point_x1, end_point_y1 = start_point_x0 + x_width, start_point_y0 + y_width
+
+        if proj == "geo":
+            x0_diff = np.abs(self.data["lon"]["value"] - start_point_x0)
+            y0_diff = np.abs(self.data["lat"]["value"] - start_point_y0)
+            x1_diff = np.abs(self.data["lon"]["value"] - end_point_x1)
+            y1_diff = np.abs(self.data["lat"]["value"] - end_point_y1)
+        elif proj == "utm":
+            x0_diff = np.abs(self.data["x"]["value"] - start_point_x0)
+            y0_diff = np.abs(self.data["y"]["value"] - start_point_y0)
+            x1_diff = np.abs(self.data["x"]["value"] - end_point_x1)
+            y1_diff = np.abs(self.data["y"]["value"] - end_point_y1)
+        else:
+            raise ValueError("Wrong projection!")
+
+        index_x0 = np.argmin(x0_diff, axis=1)
+        index_y0 = np.argmin(y0_diff, axis=0)
+        index_x1 = np.argmin(x1_diff, axis=1)
+        index_y1 = np.argmin(y1_diff, axis=0)
+        # remove repetition, should only 1 value left
+        index_x0, index_y0 = set(index_x0).pop(), set(index_y0).pop()
+        index_x1, index_y1 = set(index_x1).pop(), set(index_y1).pop()
+        # width = index_x0 - index_x1
+        # height = index_y0 - index_y1
+
+        if key == "los":
+            data_mask = copy.deepcopy(self.data["los"]["value"])
+            if index_x0 < index_x1:
+                x0 = index_x0
+                x1 = index_x1
+            else:
+                x0 = index_x1
+                x1 = index_x0
+            if index_y0 < index_y1:
+                y0 = index_y0
+                y1 = index_y1
+            else:
+                y0 = index_y1
+                y1 = index_y0
+            data_mask[y0:y1, x0:x1] = np.nan
+        else:
+            raise ValueError("Not support yet.")
+
+        self.data_mask = data_mask
+
+        # return data_mask
+
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-    def plot(self, key: str, fig_name: str) -> None:
+    def plot(self, key: str, folder_path: str, fig_name: str) -> None:
         """Plot figure to SlipPy folder in current directory.
 
         Args:
-            - key:                Key value of data you want plotting, "los", "phase", "azi", "inc", "dsm"
+            - key:                Key value of data you want plotting, "los", "phase", "azi", "inc", "dsm", "mask"
+            - folder_path:        The folder path for saving the figure.
             - fig_name:           Specify a figure name without extension, .png file would be generated
                                   and saved automatically.
 
@@ -361,7 +438,7 @@ class InSAR(GeoTrans):
             None.
         """
         # check and create "SlipPy" folder under working directory
-        folder_name = self.check_folder()
+        # folder_name = self.check_folder()
 
         # plotting
         match key:
@@ -375,14 +452,13 @@ class InSAR(GeoTrans):
                                                                       self.data["lon"]["value"].max(),
                                                                       self.data["lat"]["value"].min(),
                                                                       self.data["lat"]["value"].max()], vmin=-np.pi,
-                               vmax=np.pi)
-
+                               vmax=np.pi, origin="upper")
                 else:
                     # plt.scatter(self.data["lon"]["value"].reshape(-1, 1), self.data["lat"]["value"].reshape(-1, 1),
                     #             c=self.data[key]["value"].reshape(-1, 1), cmap="rainbow")
                     plt.imshow(self.data[key]["value"], cmap="rainbow",
                                extent=[self.data["lon"]["value"].min(), self.data["lon"]["value"].max(),
-                                       self.data["lat"]["value"].min(), self.data["lat"]["value"].max()])
+                                       self.data["lat"]["value"].min(), self.data["lat"]["value"].max()], origin="upper")
 
                 plt.xlabel("Longitude (deg)")
                 plt.ylabel("Latitude (deg)")
@@ -391,12 +467,27 @@ class InSAR(GeoTrans):
                 plt.title(f"{self.name}")
                 plt.colorbar(label=f"{key} [{self.data[key]['unit']}]")
                 # plt.show()
-                plt.savefig(os.path.join(folder_name, fig_name + '.png'), dpi=300)
+                plt.savefig(os.path.join(folder_path, fig_name + '.png'), dpi=300)
                 plt.close()
-                print(f"Now {fig_name} is saved to {os.path.join(folder_name, fig_name + '.png')}")
+                print(f"Now {fig_name} is saved to {os.path.join(folder_path, fig_name + '.png')}")
+
+            case "mask":
+                plt.imshow(self.data_mask, cmap="rainbow",
+                           extent=[self.data["lon"]["value"].min(), self.data["lon"]["value"].max(),
+                                   self.data["lat"]["value"].min(), self.data["lat"]["value"].max()], origin="upper")
+                plt.xlabel("Longitude (deg)")
+                plt.ylabel("Latitude (deg)")
+                plt.xlim([self.data["lon"]["value"].min(), self.data["lon"]["value"].max()])
+                plt.ylim([self.data["lat"]["value"].min(), self.data["lat"]["value"].max()])
+                plt.title(f"{self.name}_mask")
+                # plt.colorbar(label=f"{key} [{self.data[key]['unit']}]")
+                # plt.show()
+                plt.savefig(os.path.join(folder_path, fig_name + '.png'), dpi=300)
+                plt.close()
+                print(f"Now {fig_name} is saved to {os.path.join(folder_path, fig_name + '.png')}")
 
             case "dsm":
-                save_name = os.path.join(folder_name, fig_name + '.png')
+                save_name = os.path.join(folder_path, fig_name + '.png')
                 if self.data_dsm.parameters["proj"] == "geo":
                     self.data_dsm.show_qtresults(self.data_dsm.parameters["key"], "Lon (deg)", "Lat (deg)",
                                                  self.data_dsm.parameters["key_unit"], "yes", save_name)
@@ -414,16 +505,78 @@ class InSAR(GeoTrans):
 
     # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
 
-    def write2file(self, dem_file):
-        pass
+    def write2grd(self, key: str, folder_path: str, grd_name: str):
+        """grd_name without extension."""
+
+        lon = self.data["lon"]["value"][0, :]
+        lat = self.data["lat"]["value"][:, 0]
+        row, col = lat.shape[0], lon.shape[0]
+
+        if key in ("phase", "los", "azi", "inc"):
+            data = self.data[key]["value"]
+        elif key == "mask":
+            data = self.data_mask
+        else:
+            raise ValueError(f"Key value ({key}) is not supported yet!")
+
+        from netCDF4 import Dataset
+        grd_path_name = folder_path + grd_name + ".nc"
+        # TODO: More info should add to the grid file, e.g., unit etc.
+        # file writting
+        nc = Dataset(grd_path_name, "w", format="NETCDF4")
+        # create dimensions
+        nc.createDimension("lon", col)
+        nc.createDimension("lat", row)
+        # create variables
+        lon_var = nc.createVariable("lon", "f4", ("lon",))
+        lat_var = nc.createVariable("lat", "f4", ("lat",))
+        z_var = nc.createVariable("z", "f4", ("lat", "lon"))
+        # write into variables
+        lon_var[:] = lon
+        lat_var[:] = lat
+        z_var[:, :] = data
+        # add units info
+        lon_var.units = "deggree_east"
+        lat_var.units = "degree_north"
+        # z_var.units = "m"
+
+        nc.close()
+
+        print(f"Now the grid file has been written into: {grd_path_name} !")
 
 
 # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
 if __name__ == "__main__":
 
-    t072 = InSAR("T072", 44.28, 35.47, "WGS84")
-    t072_wang = "/misc/zs7/Zelong/2017_Iraq-Iran_EQ/Postseismic_InSAR_WangKang/dLOS_Sentinel-1/DES79/dlos_20181125.grd"
-    t072.read_from_grd(los=t072_wang)
+    t079 = InSAR("T079D_wang", 44.28, 35.47, "WGS84")
+    t079_wang = "/misc/zs7/Zelong/2017_Iraq-Iran_EQ/Postseismic_InSAR_WangKang/dLOS_Sentinel-1/DES79/dlos_20181125.grd"
+    t079.read_from_grd(los=t079_wang)
+
+    fig_path = "/misc/zs7/Zelong/2017_Iraq-Iran_EQ-2/Response4Reviewers/figs/"
+    # t079.plot(key="los", folder_path=fig_path, fig_name="t079_wang")
+
+    t079.mask(mask=[[45.2, 34.4], [1.0, 0.8]])
+    t079.plot("mask", fig_path, "data_mask")
+    t079.write2grd("los", fig_path, "t079_wang")
+
+
+
+    # t079.plot(key="los", folder_path=fig_path, fig_name="t079_wang")
+    # t079.dsm_quadtree(16, 32, 0.1)
+    # t079.plot("dsm", fig_path, "t072_wang_dsm")
+# # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+#     dem_par = "/misc/zs7/Zelong/EQ_DInSAR/EQ_20171112_T72A/SIM/20171111_20171117.utm.dem.par"
+#     t072_file = "/misc/zs7/Zelong/EQ_DInSAR/EQ_20171112_T72A/UNW/mcf/20171111_20171117.unw_utm"
+#     inc = "/misc/zs7/Zelong/EQ_DInSAR/EQ_20171112_T72A/SIM/lv_theta"
+#     azi = "/misc/zs7/Zelong/EQ_DInSAR/EQ_20171112_T72A/SIM/lv_phi"
+#
+#     # t072.read_from_gamma(dem_par, t072_file, azi, inc, satellite="Sentinel-1", downsample=10)
+#
+#     t072_gamma = InSAR("T072A_gamma", 44.28, 35.47, "WGS84")
+#     t072_gamma.read_from_gamma(dem_par, t072_file, azi, inc, satellite="Sentinel-1", downsample=10)
+#     t072_gamma.dsm_quadtree(16, 256, 0.015, 0.3, "los", "utm")
+#     t072_gamma.plot("dsm", fig_path, "t072_gamma_dsm")
+
 
 
 

@@ -150,24 +150,24 @@ class GeoTrans(object):
         return lon, lat
 
 # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-    def check_folder(self) -> str:
-        """Check and create a folder named "SlipPy" if it does not exist in current working directory.
-        This folder is used for saving files.
-
-        Args:
-            None.
-
-        Return:
-            folder_path:        Absolute folder path.
-        """
-
-        current_path = os.getcwd()
-        # check the folder's existence
-        folder_path = os.path.join(current_path, "SlipPy")
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
-
-        return folder_path
+#     def check_folder(self) -> str:
+#         """Check and create a figure folder if it does not exist in current working directory.
+#         This folder is used for saving files.
+#
+#         Args:
+#             None.
+#
+#         Return:
+#             folder_path:        Absolute folder path.
+#         """
+#
+#         current_path = os.getcwd()
+#         # check the folder's existence
+#         folder_path = os.path.join(current_path, "SlipPy")
+#         if not os.path.exists(folder_path):
+#             os.makedirs(folder_path)
+#
+#         return folder_path
 
 
 # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-

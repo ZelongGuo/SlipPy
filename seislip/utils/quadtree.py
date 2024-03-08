@@ -134,7 +134,7 @@ class QTree(object):
         vmin, vmax = self.image.min(), self.image.max()
         img = np.where(self.image == 0, np.nan, self.image)
         plt.imshow(img, cmap="rainbow", extent=[np.min(self.x), np.max(self.x), np.min(self.y),
-                                                np.max(self.y)], vmin=vmin, vmax=vmax)
+                                                np.max(self.y)], vmin=vmin, vmax=vmax, origin="upper")
         # plt.scatter(self.x.reshape(-1, 1), self.y.reshape(-1, 1), c=img.reshape(-1, 1),
         #             cmap="rainbow", vmin=vmin, vmax=vmax)
         plt.xlim([np.min(self.x), np.max(self.x)])
