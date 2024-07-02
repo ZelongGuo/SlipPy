@@ -1,5 +1,4 @@
-#---------------------------------------------------------
-# DATA PREPARING
+### DATA PREPARING
 - parse file (Now for GAMMA only)
 
 - image_preprocessing
@@ -9,8 +8,8 @@
   - image cropping (optional, for postseismic mainly)
   - image downsampling
 
-# FAULT (class)
+### FAULT (class)
 
-# INVERSION
+### INVERSION
 
-# STRESS
+### STRESS
