@@ -845,23 +845,126 @@ Created on 21.07.23
 #
 # d = [a, b, c]
 # e = [d]
+#
+# def split_line_segment(length, sublen, ratio, increasing=True):
+#     lengths = [sublen * ratio**i for i in range(int(length / sublen))]
+#     if not increasing:
+#         lengths = lengths[::-1]
+#
+#     starting_coordinates = [(sum(lengths[:i]), 0) for i in range(len(lengths))]
+#
+#     return lengths, starting_coordinates
+#
+# # 示例调用
+# length_of_line = 20
+# subsegment_length = 2
+# growth_ratio = 1.5
+# is_increasing = True
+#
+# lengths, starting_coords = split_line_segment(length_of_line, subsegment_length, growth_ratio, is_increasing)
+#
+# for i, (length, coords) in enumerate(zip(lengths, starting_coords), 1):
+#     print(f"Subsegment {i}: Length = {length}, Starting Coordinates = {coords}")
 
-def split_line_segment(length, sublen, ratio, increasing=True):
-    lengths = [sublen * ratio**i for i in range(int(length / sublen))]
-    if not increasing:
-        lengths = lengths[::-1]
+import numpy as np
 
-    starting_coordinates = [(sum(lengths[:i]), 0) for i in range(len(lengths))]
 
-    return lengths, starting_coordinates
 
-# 示例调用
-length_of_line = 20
-subsegment_length = 2
-growth_ratio = 1.5
-is_increasing = True
+# def line_plane_intersect(x, y, z, sx, sy, sz):
+#     '''
+#     Calculate the intersection of a line and a plane using a parametric
+#     representation of the plane. This is hardcoded for a vertical line.
+#     '''
+#
+#     numerator = np.array([[1., 1., 1., 1.],
+#                           [x[0], x[1], x[2], sx],
+#                           [y[0], y[1], y[2], sy],
+#                           [z[0], z[1], z[2], sz]])
+#
+#     numerator = np.linalg.det(numerator)
+#
+#     denominator = np.array([[1., 1., 1., 1.],
+#                             [x[0], x[1], x[2], 0],
+#                             [y[0], y[1], y[2], 0],
+#                             [z[0], z[1], z[2], -sz]])
+#
+#     denominator = np.linalg.det(denominator)
+#
+#     if denominator == 0:
+#         denominator = np.spacing(1)
+#
+#     t = numerator / denominator
+#     d = np.array([sx, sy, sz]) - t * (np.array([sx, sy, 0])-
+#                                       np.array([sx, sy, sz]))
+#     return d
 
-lengths, starting_coords = split_line_segment(length_of_line, subsegment_length, growth_ratio, is_increasing)
+from numpy import (pi,cross,dot,sin,cos,tan,arctan2,log,
+                   sqrt,array,asarray,zeros,empty,copy,
+                   nonzero)
+from numpy.linalg import norm,det
+def line_plane_intersect(x, y, z, sx, sy, sz):
+  # Calculate the intersection of a line and a plane using a parametric
+  # representation of the plane.  This is hardcoded for a vertical line.
+  numerator = array([[   1,    1,    1,  1],
+                     [x[0], x[1], x[2], sx],
+                     [y[0], y[1], y[2], sy],
+                     [z[0], z[1], z[2], sz]])
+  numerator = det(numerator)
+  denominator = array([[   1,    1,    1,   0],
+                       [x[0], x[1], x[2],   0],
+                       [y[0], y[1], y[2],   0],
+                       [z[0], z[1], z[2], -sz]])
+  denominator = det(denominator)
+  if denominator == 0:
+    print('hey')
+    denominator = 1e-10
 
-for i, (length, coords) in enumerate(zip(lengths, starting_coords), 1):
-    print(f"Subsegment {i}: Length = {length}, Starting Coordinates = {coords}")
+  t = numerator/denominator # parametric curve parameter
+  d = array([sx,sy,sz])-array([0,0,-sz])*t
+  return d
+
+# import numpy as np
+# def line_plane_intersect(p1, p2, p3, sx, sy, sz):
+#     """
+#     Calculate the intersection of a line and a plane using a parametric
+#     representation of the plane.  This is hardcoded for a vertical line.
+#
+#     Args:
+#         * sx        : x coordinates of ground points
+#         * sy        : y coordinates of ground points
+#         * sz        : z coordinates of ground points
+#         * p1        : xyz tuple or list of first triangle vertex
+#         * p2        : xyz tuple or list of second triangle vertex
+#         * p3        : xyz tuple or list of third triangle vertex
+#     """
+#     # Extract the separate x,y,z values
+#     x1, y1, z1 = p1
+#     x2, y2, z2 = p2
+#     x3, y3, z3 = p3
+#
+#     numerator = np.array([[1.0, 1.0, 1.0, 1.0],
+#                           [x1, x2, x3, sx],
+#                           [y1, y2, y3, sy],
+#                           [z1, z2, z3, sz]])
+#     numerator = np.linalg.det(numerator)
+#     denominator = np.array([[1.0, 1.0, 1.0, 0.0],
+#                             [x1, x2, x3, 0.0],
+#                             [y1, y2, y3, 0.0],
+#                             [z1, z2, z3, -sz]])
+#     denominator = np.linalg.det(denominator)
+#     if denominator == 0:
+#         denominator = 1.0e-15
+#     # Parameteric curve parameter
+#     t = numerator / denominator
+#     d = np.array([sx, sy, sz]) - np.array([0.0, 0.0, -sz]) * t
+#
+#     return d
+
+
+x = [-50, 52, 45]
+y = [-80, 80, -80]
+z = [-3, 59, 34]
+sx, sy, sz = 10, 11, 56
+
+d = line_plane_intersect(x, y, z, sx, sy, sz)
+print(f"result: {d}")

@@ -379,12 +379,12 @@ if __name__ == "__main__":
 
     fault = Fault("fault1", 44.28, 35.47)
     # patch1, patch_corner1 = fault.initialize_planar_fault(lon_uc=44.344, lat_uc=35.603, verdepth_uc=3, strike=10, dip=45, length=80, width=50)
-    fault.initialize_fault(pointpos="upper center", lon=44.344, lat=35.603, verdepth=-15, strike=50, dip=45, length=80, width=50)
-    fault.plot(fault.patch_verts)
+    fault.initialize_fault(pointpos="upper center", lon=44.344, lat=35.603, verdepth=-15, strike=50, dip=45, length=180, width=30)
+    # fault.plot(fault.patch_verts)
 
     # fault.extend_to_surface()
-    # fault.construct_rect_patches(sublength=3, subwidth=3, str_vary_fct=1.2, dip_vary_fct=1.2, verbose=False)
-    # fault.plot(fault.patch_verts)
+    fault.construct_rect_patches(sublength=3, subwidth=3, str_vary_fct=1., dip_vary_fct=1., verbose=False)
+    fault.plot(fault.patch_verts)
 
 
 

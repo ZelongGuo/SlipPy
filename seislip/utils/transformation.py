@@ -19,7 +19,9 @@ class Transformation(object):
     X:      along strike
     Y:      along opposite direction of dip
     Z:      normal direction the fault
-    The origin of the fault coordinate system is bottom left/right corner point.
+
+    NOTE: the transformation matrix defined here needs left multiply.
+    Coordinate transformation for fixed coordinate system.
 
     """
     def __init__(self):
@@ -31,6 +33,7 @@ class Transformation(object):
                       [0.0, 1.0, 0.0, T[1]],
                       [0.0, 0.0, 1.0, T[2]],
                       [0.0, 0.0, 0.0, 1.0]])
+        # Note left multiply, coordinate transformation for fixed coordinate system
         self.M = M.dot(self.M)
 
     def rotation_x(self, theta):
@@ -41,6 +44,7 @@ class Transformation(object):
 
         self.M = M.dot(self.M)
 
+
     def rotation_y(self, alpha):
         M = np.array([[np.cos(alpha),   0.0, np.sin(alpha), 0.0],
                       [0.0,             1.0, 0.0,           0.0],
@@ -49,6 +53,7 @@ class Transformation(object):
 
         self.M = M.dot(self.M)
 
+
     def rotation_z(self, beta):
         M = np.array([[np.cos(beta), -np.sin(beta), 0.0, 0.0],
                       [np.sin(beta), np.cos(beta),  0.0, 0.0],
@@ -56,6 +61,7 @@ class Transformation(object):
                       [0.0,          0.0,           0.0, 1.0]])
 
         self.M = M.dot(self.M)
+
 
     def inverse(self):
         """Inverse of transformation matrix."""
